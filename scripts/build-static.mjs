@@ -1,0 +1,11 @@
+import {cp,mkdir,rm,readFile,access} from 'node:fs/promises';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const root=fileURLToPath(new URL('../',import.meta.url));
+const out=path.resolve(root,'dist');
+if(path.dirname(out)!==path.resolve(root))throw new Error('Build output must stay inside the project.');
+await rm(out,{recursive:true,force:true});await mkdir(out);
+for(const name of ['index.html','style.css','src','assets','NOTICE.md','vendor'])await cp(path.join(root,name),path.join(out,name),{recursive:true});
+const manifest=JSON.parse(await readFile(path.join(out,'assets/paint/manifest.json'),'utf8'));
+for(const {file} of manifest)await access(path.join(out,'assets/paint',file));
+console.log(`Static site ready in dist (${manifest.length} shared paint textures).`);
