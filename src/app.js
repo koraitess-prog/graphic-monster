@@ -1,14 +1,14 @@
 import {QUESTIONS,generateMonster,encodeDNA,decodeDNA} from './dna.js';
 import {evolutionScene,amorphousScene} from './evolution.js';
-import {CreatureView} from './renderer.js';
+import {CreatureView} from './renderer.js?v=mobile2';
 import {initialState,reducer,restoreState,normalizeName} from './state.js';
 import {visualSample} from './samples.js';
 import {createPoster} from './poster.js';
-import {loadPaintTiles} from './paint-cache.js';
+import {loadPaintTiles} from './paint-cache.js?v=mobile2';
 import {displayFamily} from './typography.js';
 import {drawWordmark} from './wordmark.js';
-import {openArchive,makeRecord,mergeRecord} from './archive.js';
-import {CollectionScreen,parseCollectionRoute} from './collection-screen.js';
+import {openArchive,makeRecord,mergeRecord} from './archive.js?v=mobile2';
+import {CollectionScreen,parseCollectionRoute} from './collection-screen.js?v=mobile2';
 
 const app=document.querySelector('#app'),copy=document.querySelector('#copy'),canvas=document.querySelector('#monster');
 const announcement=document.querySelector('#announcement'),dialog=document.querySelector('#name-dialog');
@@ -29,8 +29,10 @@ function applyHash(){if(state.screen==='reveal')return false;const match=locatio
 applyHash();
 try{archiveDB=await openArchive();records=await archiveDB.list();}catch{archiveFailure='The collection cannot be saved in this browser right now.';}
 const previewScene=()=>state.screen==='intro'?amorphousScene():state.screen==='reveal'?(records.find(r=>r.id===state.creationId)?.scene??evolutionScene(state.answers)):evolutionScene(state.answers);
-await loadPaintTiles();
+
 const view=new CreatureView(canvas,previewScene());
+function warmPaint(scene){void loadPaintTiles(scene).then(()=>{if(!app.hidden)view.renderer.draw(view.pose());});}
+warmPaint(previewScene());
 const stageVisibility=new IntersectionObserver(entries=>view.setVisible(entries[0].isIntersecting),{threshold:.05});stageVisibility.observe(canvas);
 function save(){
  try{sessionStorage.setItem(storageKey,JSON.stringify(state));}catch{}
@@ -120,11 +122,11 @@ function enterReveal(next,{focus=true}={}){
 function dispatch(event,{focus=true,art=false}={}){
  clearTimeout(advanceTimer);const previous=state.screen,next=reducer(state,event);
  if(previous==='question'&&next.screen==='reveal'&&!reduced.matches){enterReveal(next,{focus});return;}
- state=next;render({focus});if(previous!=='reveal'&&state.screen==='reveal')window.scrollTo({top:0,behavior:'instant'});if(art)view.update(previewScene(),{immediate:state.screen==='intro'});
+ state=next;render({focus});if(previous!=='reveal'&&state.screen==='reveal')window.scrollTo({top:0,behavior:'instant'});if(art){const scene=previewScene();view.update(scene,{immediate:state.screen==='intro'});warmPaint(scene);}
 }
 function choose(value){
  if(transitioning)return;
- const editing=complete();clearTimeout(advanceTimer);state=reducer(state,{type:'SELECT',value});const q=QUESTIONS[state.step];render({selection:true});view.update(evolutionScene(state.answers));announce(`${labelFor(q,value)} selected. ${feedback[state.step]}`);
+ const editing=complete();clearTimeout(advanceTimer);state=reducer(state,{type:'SELECT',value});const q=QUESTIONS[state.step];render({selection:true});view.update(evolutionScene(state.answers));warmPaint(evolutionScene(state.answers));announce(`${labelFor(q,value)} selected. ${feedback[state.step]}`);
  // Keep the existing 780ms morph; leave a short, quiet beat to see its settled shape.
  advanceTimer=setTimeout(()=>{dispatch({type:editing?'REVEAL':'ADVANCE'});announce(state.screen==='reveal'?`Meet ${state.name}.`:`Decision ${state.step+1} of five. ${QUESTIONS[state.step].title.replace('\n',' ')}`);},reduced.matches?650:1700);
 }

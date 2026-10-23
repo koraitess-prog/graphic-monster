@@ -7,8 +7,8 @@ const colorMix=(a,b,t)=>{const aa=a.match(/[a-f\d]{2}/gi).map(v=>parseInt(v,16))
 function polyPath(points,close=true){const p=new Path2D();points.forEach(([x,y],i)=>i?p.lineTo(x,y):p.moveTo(x,y));if(close)p.closePath();return p;}
 const styleOf=s=>({color:s.color,texture:s.texture??.7,flow:s.flow??1.35,soft:!!s.soft});
 const styleKey=s=>`${s.color}/${s.texture}/${s.flow}/${s.soft??false}`;
-const bakedPaint=new Map();
-export function registerPaintTiles(entries){for(const [key,image] of entries)bakedPaint.set(key,image);}
+const bakedPaint=new Map();let paintVersion=0;
+export function registerPaintTiles(entries){for(const [key,image] of entries)bakedPaint.set(key,image);paintVersion++;}
 function styleBlend(a,b,t){
  const all=new Map();for(const [parts,weight]of [[a,1-t],[b,t]])for(const p of parts){const key=styleKey(p.style),old=all.get(key);all.set(key,{style:p.style,weight:(old?.weight??0)+p.weight*weight});}
  return [...all.values()].filter(p=>p.weight>.001);
@@ -45,6 +45,7 @@ export class MonsterRenderer{
  }
  resize(scale){if(this.scale===scale)return;this.scale=scale;this.canvas.width=600*scale;this.canvas.height=760*scale;}
  pattern(style){
+   if(this.paintVersion!==paintVersion){this.patterns.clear();this.paintVersion=paintVersion;}
    const key=styleKey(style);if(this.patterns.has(key))return this.patterns.get(key);
    if(bakedPaint.has(key)){const p=this.ctx.createPattern(bakedPaint.get(key),'repeat');p.setTransform({a:.5,b:0,c:0,d:.5,e:0,f:0});this.patterns.set(key,p);return p;}
    const size=384,c=this.factory(size*2,size*2),ctx=c.getContext('2d');ctx.scale(2,2);

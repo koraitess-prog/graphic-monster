@@ -1,5 +1,5 @@
 import {displayFamily} from './typography.js';
-import {MonsterRenderer} from './renderer.js';
+import {MonsterRenderer} from './renderer.js?v=mobile2';
 import {generateMonster} from './dna.js';
 import {PAPER,C} from './illustrations.js';
 

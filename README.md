@@ -11,7 +11,7 @@ npm start
 ```
 
 Open http://127.0.0.1:4318/. No package installation, backend, paid API or build
-step is required. `npm test` runs 20 regression tests.
+step is required. `npm test` runs 23 regression tests.
 
 ## The living collection
 
@@ -56,7 +56,7 @@ names. The earlier visual exploration remains available at `/studies.html`.
 
 ## Verification
 
-The 20 tests cover all 80 anatomies and flows, cumulative stages, morph continuity,
+The 23 tests cover all 80 anatomies and flows, cumulative stages, morph continuity,
 pattern containment, final locks, immutable snapshots, identity, routes, escaped names,
 read-only profiles and narrative variation. Browser verification is documented in
 `qa/refinement/living-archive-verification.md`.
@@ -68,8 +68,11 @@ these scripts use the development environment's bundled `@napi-rs/canvas` packag
 
 ## Hosting and attribution
 
-No public deployment workflow is configured. Host this repository as static files
-with its root as the site directory. Keep `assets/paint/`: the PNGs are shared paint
+Live site: https://koraitess-prog.github.io/graphic-monster/
+
+GitHub Pages publishes the root of `codex/living-archive` automatically.
+The intro appears before optional texture downloads; only the current scene’s
+swatches are loaded, with a procedural fallback and bounded archive startup. Keep `assets/paint/`: the PNGs are shared paint
 textures, not static monster illustrations.
 
 Adapted Anidoodle geometry and persistent-character techniques are credited in
