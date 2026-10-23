@@ -9,6 +9,7 @@ export function scenePaintKeys(scene){
 // Paint is an optional enhancement: never gate the interface on image downloads.
 // Only the current anatomy's swatches are requested; cached promises share work.
 export async function loadPaintTiles(scene,{timeoutMs=5000}={}){
+ if(scene?.medium==='cut-paper')return;
  const base=new URL('../assets/paint/',import.meta.url);
  try{
   manifest??=bounded(fetch(new URL('manifest.json',base)).then(r=>{if(!r.ok)throw new Error('Paint manifest unavailable');return r.json();}),timeoutMs).catch(error=>{manifest=null;throw error;});

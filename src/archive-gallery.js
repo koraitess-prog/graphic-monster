@@ -9,7 +9,7 @@ export class LivingArchive{
   this.onChange=()=>{this.stop();for(const item of this.items.values())if(item.visible){item.active=false;item.canvas.dataset.motion='rest';item.renderer?.draw(item.record.scene);}this.schedule();};
   this.media.addEventListener('change',this.onChange);document.addEventListener('visibilitychange',this.onChange);
   const observer=new IntersectionObserver(entries=>{for(const entry of entries){const item=this.items.get(entry.target);if(!item)continue;item.visible=entry.isIntersecting;
-   if(item.visible){if(!item.renderer)item.renderer=new MonsterRenderer(item.canvas,{scale:.6});else item.renderer.resize(.6);item.renderer.draw(item.record.scene);item.canvas.dataset.motion='rest';void loadPaintTiles(item.record.scene).then(()=>{if(item.visible&&!item.active)item.renderer?.draw(item.record.scene);});item.due=performance.now()+650+(item.record.seed*107+item.index*1399)%3100;}
+   if(item.visible){if(!item.renderer)item.renderer=new MonsterRenderer(item.canvas,{scale:.6,background:"#202426"});else item.renderer.resize(.6);item.renderer.draw(item.record.scene);item.canvas.dataset.motion='rest';void loadPaintTiles(item.record.scene).then(()=>{if(item.visible&&!item.active)item.renderer?.draw(item.record.scene);});item.due=performance.now()+650+(item.record.seed*107+item.index*1399)%3100;}
    else{item.active=false;item.canvas.dataset.motion='offscreen';item.renderer?.resize(.002);}
   }this.schedule();},{threshold:.12});this.observer=observer;
   root.querySelectorAll('[data-specimen]').forEach((window,index)=>{const record=records[index],canvas=window.querySelector('canvas');this.items.set(window,{record,canvas,index,visible:false,active:false,due:0,event:index,renderer:null});observer.observe(window);});

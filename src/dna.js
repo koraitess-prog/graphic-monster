@@ -1,9 +1,13 @@
+import {expandedCollageScene} from './expanded-collage.js';
+import {paperDNAScene} from './paper-dna.js';
+import {collageScene} from './collage.js';
+import {grotesqueScene} from './grotesque.js';
 import {sample,limb,rng} from './anidoodle-kit.js';
 import {C,PAPER} from './illustrations.js';
 import {addPatterns} from './patterns.js';
 
 export const QUESTIONS = [
- {key:'principle',title:'What speaks to\nyou first?',chapter:'Body language',hint:'Choose a visual instinct. It becomes the architecture of your creature.',effect:'Body construction',options:[['typography','Typography','Letters become anatomy.'],['grid','Grid','Find a rhythm in repetition.'],['color','Color','Think in painted masses.'],['shape','Shape','Follow an unexpected contour.'],['texture','Texture','Let the marks make the form.']]},
+ {key:'principle',title:'What speaks to\nyou first?',chapter:'Paper language',hint:'Choose the paper vocabulary your creature is built from.',effect:'Paper construction',options:[['typography','Typography','Letters become anatomy.'],['grid','Grid','Find a rhythm in repetition.'],['color','Color','Think in painted masses.'],['shape','Shape','Follow an unexpected contour.'],['texture','Texture','Let the marks make the form.']]},
  {key:'organization',title:'How do\nyou think?',chapter:'A sense of order',hint:'A measured rhythm, or a little room for the unexpected?',effect:'Proportions & organization',options:[['order','Order','Balance. Align. Repeat.'],['experiment','Experiment','Shift the balance. Make a discovery.']]},
  {key:'gaze',title:'How do you\ncommunicate?',chapter:'Ways of seeing',hint:'One clear focus, or several unexpected points of view?',effect:'Eyes & gaze',options:[['clarity','Clarity','Make the focal point unmistakable.'],['expression','Expression','There is more than one way to see.']]},
  {key:'density',title:'Less\nor more?',chapter:'The surface of things',hint:'Give the paper room to breathe, or build a world of little details.',effect:'Surface density',options:[['minimal','Minimal','A few marks, carefully placed.'],['rich','Rich','Layers worth looking closer at.']]},
@@ -34,7 +38,7 @@ export function pointInside([x,y],poly){let inside=false;for(let i=0,j=poly.leng
 /** Main generator. Stable part IDs are shared across all 80 anatomies, enabling
  * correspondence-based morphs instead of image swaps. The authored family contour
  * is only the starting point: the other four systems independently change it. */
-export function generateMonster(input={}){
+export function generateLegacyMonster(input={}){
  const answers=normalizeAnswers(input),code=encodeDNA(answers),family=FAMILIES[answers.principle];
  const experimental=answers.organization==='experiment',expressive=answers.gaze==='expression',rich=answers.density==='rich',playful=answers.attitude==='playful';
  const shapes=[],lines=[],eyes=[],attachments=[];
@@ -135,3 +139,5 @@ export function validateScene(scene){
  for(const attachment of scene.attachments)if(!pointInside(attachment.root,body))errors.push(`${attachment.id}: disconnected root`);
  return [...new Set(errors)];
 }
+
+export function generateMonster(input={},version=3){if(version>=6)return paperDNAScene(input);if(version>=5)return expandedCollageScene(input);if(version>=4)return collageScene(input);const scene=generateLegacyMonster(input);return version>=3?grotesqueScene(scene):scene;}

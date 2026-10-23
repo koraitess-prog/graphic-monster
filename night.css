@@ -66,3 +66,24 @@ dialog::backdrop{background:#080d10b8}
 .paper-skip{position:absolute;top:18px;left:18px;transform:translateY(-200%);padding:12px 24px;border:1px solid #151a1b;background:#e8ddba;color:#151a1b;font:16px Georgia;z-index:1}
 .paper-skip:focus-visible{transform:none;outline:3px solid #f05226;outline-offset:3px}
 @media(max-width:680px){.medium-paper .paper-title.cut-title{font-size:clamp(34px,8.5vw,52px)}.question-title.cut-title{font-size:clamp(25px,6vw,35px)}.cut-word{margin-right:.12em}}
+
+/* The opening is a cream paper composition, with the title as its central mass. */
+body.intro-paper{background:#f3eedf;color:#252c29}
+html:has(body.intro-paper){background:#f3eedf}
+.intro-paper .site-header{max-width:none;border-color:#d6ceba;background:#f3eedf}
+.intro-paper .header-actions>.text-button{color:#4d554d}
+.intro-paper .screen-intro{display:flex;position:relative;justify-content:center;align-items:center;max-width:none;min-height:calc(100svh - 80px);padding:28px 4vw 52px;background:#f3eedf}
+.intro-paper .screen-intro .studio{display:none}
+.intro-paper .screen-intro .copy{max-width:1500px;width:100%;padding:0;text-align:center}
+.intro-paper .screen-intro .paper-title.cut-title{font-size:clamp(64px,14.8vw,230px);line-height:1.04!important;margin:0 auto 42px;font-weight:900}
+.intro-paper .paper-title .cut-word{margin:0 auto .025em;align-items:center;justify-content:center}
+.intro-paper .paper-title .cut-letter{margin:0 .005em}
+.intro-paper .cut-letter[data-treatment="whole"]{background:none;color:#252c29;clip-path:none;padding:0 .015em;font-style:normal;outline:none;font-family:Georgia,serif}
+.intro-paper .cut-letter[data-treatment="whole"]:before,.intro-paper .cut-letter[data-treatment="constructed"]:before{display:none}
+.intro-paper .cut-letter[data-treatment="constructed"]{background:none;clip-path:none;outline:none;padding:0;width:.72em;height:1.04em}
+.intro-paper .cut-letter[data-treatment="constructed"] svg{display:block;width:100%;height:100%;overflow:visible}
+.intro-paper .name-form{margin:0 auto;max-width:320px;text-align:left}
+.intro-paper .screen-intro .name-form input{font:20px/1.5 Georgia,serif;color:#252c29;border-color:#a69e89}
+.intro-paper .name-form input::placeholder{color:#726e60}
+.intro-paper .name-submit{color:#494e40}
+@media(max-width:680px){.intro-paper .screen-intro{min-height:calc(100svh - 64px);padding:30px 4vw 65px}.intro-paper .screen-intro .paper-title.cut-title{font-size:clamp(48px,14.5vw,90px);margin-bottom:56px}.intro-paper .name-form{max-width:270px}.intro-paper .screen-intro .name-form input{font-size:18px}}

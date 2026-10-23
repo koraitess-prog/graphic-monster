@@ -12,7 +12,7 @@ test('archive records preserve the exact finished scene, identity and original d
  const ids=new Set();
  for(const [i,a] of combinations().entries()){
   const state=completed(a,`specimen-${i}`),record=makeRecord(state);ids.add(record.id);
-  assert.equal(record.code,encodeDNA(a));assert.deepEqual(record.scene,generateMonster(a));assert.equal(record.seed,record.scene.seed);assert.equal(record.createdAt,state.createdAt);
+  assert.equal(record.code,encodeDNA(a));assert.deepEqual(record.scene,generateMonster({...a,...(state.rulesVersion>=6?{seed:state.visualSeed}:{})},state.rulesVersion));assert.equal(record.seed,record.scene.seed);assert.equal(record.createdAt,state.createdAt);
   assert.deepEqual(restoreState(JSON.stringify(state)),state);
   const next=reducer(state,{type:'REGENERATE',seed:847});const merged=mergeRecord(record,makeRecord(next));
   assert.equal(merged.scene,record.scene);assert.equal(merged.answers,record.answers);assert.equal(merged.originalStory,record.originalStory);assert.equal(merged.story.text,next.story.text);assert.notEqual(merged.story.text,record.story.text);

@@ -3,6 +3,7 @@ import {LivingArchive} from './archive-gallery.js?v=mobile2';
 import {CreatureView} from './renderer.js?v=mobile2';
 import {QUESTIONS} from './dna.js';
 import {visualSample} from './samples.js';
+import {decoratePaperTitles} from './paper-titles.js';
 import {displayFamily} from './typography.js';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function parseCollectionRoute(hash){
@@ -13,7 +14,7 @@ export function parseCollectionRoute(hash){
 export function identityTraits(record){
  return QUESTIONS.map(q=>{const option=q.options.find(o=>o[0]===record.answers[q.key]);return {key:q.key,value:option?.[0]??'',label:option?.[1]??'Unknown'};});
 }
-export function windowMarkup(records){return records.map((r,i)=>`<button type="button" class="habitat" data-specimen="${esc(r.id)}" aria-label="Meet ${esc(r.name)}"><span class="habitat-room"><canvas width="1" height="1" aria-hidden="true"></canvas><span class="habitat-open" aria-hidden="true">↗</span></span><span class="habitat-label"><span dir="auto">${esc(r.name)}</span><span class="specimen-number" aria-hidden="true">${String(records.length-i).padStart(3,'0')}</span></span></button>`).join('');}
+export function windowMarkup(records){return records.map((r,i)=>`<button type="button" class="habitat" data-specimen="${esc(r.id)}" aria-label="Observe ${esc(r.name)}"><span class="habitat-room"><canvas width="1" height="1" aria-hidden="true"></canvas><span class="habitat-open" aria-hidden="true">↗</span></span><span class="habitat-label"><span dir="auto">${esc(r.name)}</span><span class="specimen-number" aria-hidden="true">${String(records.length-i).padStart(3,'0')}</span></span></button>`).join('');}
 export class CollectionScreen{
  constructor(root,actions){
   this.root=root;this.actions=actions;this.signature='';
@@ -38,13 +39,13 @@ export class CollectionScreen{
    if(!record){this.root.innerHTML='<button class="text-button" data-collection-action="archive">← Archive</button><div class="collection-empty"><h1 tabindex="-1">Not here yet.</h1><p>This creature isn’t saved in this browser.</p></div>';}
    else{
     const number=String(records.length-records.indexOf(record)).padStart(3,'0');
-    this.root.innerHTML=`<div class="collection-toolbar"><button class="text-button" data-collection-action="archive"><span aria-hidden="true">←</span> Archive</button><span class="dossier-number">SPECIMEN ${number}</span></div><article class="creature-dossier"><div class="dossier-art"><canvas role="img" aria-label="${esc(record.name)}, an archived illustrated creature"></canvas></div><div class="dossier-copy"><p class="dossier-eyebrow">A living specimen</p><h1 dir="auto" tabindex="-1">${esc(record.name)}</h1><p class="dossier-story" dir="auto">${esc(record.story?.text??record.originalStory?.text)}</p><section class="dossier-identity" aria-label="Design identity"><h2>Design instincts</h2><ul>${identityTraits(record).map(t=>`<li><span class="trait-symbol">${visualSample(t.value)}</span><span>${esc(t.label)}</span></li>`).join('')}</ul></section></div></article>`;
+    this.root.innerHTML=`<div class="collection-toolbar"><button class="text-button" data-collection-action="archive"><span aria-hidden="true">←</span> Archive</button><span class="dossier-number">SPECIMEN ${number}</span></div><article class="creature-dossier"><div class="dossier-art"><canvas role="img" aria-label="${esc(record.name)}, an archived illustrated creature"></canvas></div><div class="dossier-copy"><p class="dossier-eyebrow">Living anomaly</p><h1 dir="auto" tabindex="-1">${esc(record.name)}</h1><p class="dossier-story" dir="auto">${esc(record.story?.text??record.originalStory?.text)}</p><section class="dossier-identity" aria-label="Design identity"><h2>Design instincts</h2><ul>${identityTraits(record).map(t=>`<li><span class="trait-symbol">${visualSample(t.value)}</span><span>${esc(t.label)}</span></li>`).join('')}</ul></section></div></article>`;
     this.root.querySelector('h1').style.fontFamily=displayFamily(record.name);
     this.profile=new CreatureView(this.root.querySelector('.dossier-art canvas'),record.scene);this.profile.greet(600);void loadPaintTiles(record.scene).then(()=>this.profile?.renderer.draw(this.profile.pose()));
     this.profileVisibility=new IntersectionObserver(entries=>this.profile?.setVisible(entries[0].isIntersecting),{threshold:.05});this.profileVisibility.observe(this.root.querySelector('.dossier-art'));
    }
   }
-  this.root.querySelector('h1')?.focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});
+  decoratePaperTitles(this.root);this.root.querySelector('h1')?.focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});
  }
  release(){this.gallery?.destroy();this.gallery=null;this.profileVisibility?.disconnect();this.profileVisibility=null;this.profile?.destroy();this.profile=null;}
  close(){this.release();this.signature='';this.root.hidden=true;this.root.replaceChildren();}

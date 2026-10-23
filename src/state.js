@@ -1,6 +1,6 @@
 import {QUESTIONS,normalizeAnswers,encodeDNA} from './dna.js';
 import {generateStory,wordCount} from './story.js';
-export const initialState=()=>({screen:'intro',step:0,answers:{},name:'',storySeed:0,story:null,creationId:null,createdAt:null});
+export const initialState=()=>({screen:'intro',rulesVersion:6,step:0,answers:{},name:'',storySeed:0,visualSeed:null,story:null,creationId:null,createdAt:null});
 export const normalizeName=value=>Array.from(String(value??'').replace(/[\u0000-\u001f\u007f]/g,'').replace(/\s+/gu,' ').trim()).slice(0,48).join('');
 const complete=s=>QUESTIONS.every(q=>s.answers[q.key]);
 function withStory(state){
@@ -8,14 +8,14 @@ function withStory(state){
  const code=encodeDNA(state.answers),seed=state.storySeed>>>0;
  if(!state.creationId)state={...state,creationId:`legacy-${seed}-${code}-${Array.from(state.name).map(c=>c.codePointAt(0).toString(36)).join('')}`,createdAt:state.createdAt??0};
  if(state.story?.code===code&&state.story.seed===seed)return state;
- return{...state,story:{code,seed,text:generateStory(state.answers,seed)}};
+ return{...state,story:{code,seed,text:generateStory(state.answers,seed,state.rulesVersion??2)}};
 }
 export function reducer(state,event){
  if(state.screen==='reveal'&&!['RESET','REGENERATE','REVEAL'].includes(event.type))return state;
  switch(event.type){
   case 'START':{
    const name=normalizeName(event.name??state.name);if(!name)return state;
-   const next={...state,name,storySeed:event.seed>>>0,story:null,creationId:state.creationId??event.id??`creature-${event.seed>>>0}-${Array.from(name).map(c=>c.codePointAt(0).toString(36)).join('')}`,createdAt:state.createdAt??event.createdAt??0};
+   const next={...state,name,storySeed:event.seed>>>0,...(state.rulesVersion>=6?{visualSeed:state.visualSeed??event.seed>>>0}:{}),story:null,creationId:state.creationId??event.id??`creature-${event.seed>>>0}-${Array.from(name).map(c=>c.codePointAt(0).toString(36)).join('')}`,createdAt:state.createdAt??event.createdAt??0};
    const first=QUESTIONS.findIndex(q=>!state.answers[q.key]);
    return first<0?withStory({...next,screen:'reveal',step:4}):{...next,screen:'question',step:first};
   }
@@ -41,8 +41,9 @@ export function restoreState(raw){
   if(s.screen==='reveal'&&Object.keys(answers).length!==5)throw new Error();
   if(s.screen==='question'&&QUESTIONS.slice(0,s.step).some(q=>!answers[q.key]))throw new Error();
   const name=normalizeName(s.name),seed=Number.isInteger(s.storySeed)?s.storySeed>>>0:0;
-  let state={screen:name?s.screen:'intro',step:s.step,answers,name,storySeed:seed,story:null,creationId:typeof s.creationId==='string'?s.creationId:null,createdAt:Number.isFinite(s.createdAt)?s.createdAt:null};
-  if(s.story&&complete(state)&&s.story.code===encodeDNA(answers)&&s.story.seed===seed&&typeof s.story.text==='string'&&wordCount(s.story.text)>=35&&wordCount(s.story.text)<=55&&s.story.text===generateStory(answers,seed))state.story=s.story;
+  const rulesVersion=!Object.keys(answers).length?6:[3,4,5,6].includes(s.rulesVersion)?s.rulesVersion:2;
+  let state={rulesVersion,screen:name?s.screen:'intro',step:s.step,answers,name,storySeed:seed,visualSeed:Number.isInteger(s.visualSeed)?s.visualSeed>>>0:rulesVersion>=6&&Object.keys(answers).length?seed:null,story:null,creationId:typeof s.creationId==='string'?s.creationId:null,createdAt:Number.isFinite(s.createdAt)?s.createdAt:null};
+  if(s.story&&complete(state)&&s.story.code===encodeDNA(answers)&&s.story.seed===seed&&typeof s.story.text==='string'&&wordCount(s.story.text)>=35&&wordCount(s.story.text)<=55&&s.story.text===generateStory(answers,seed,rulesVersion))state.story=s.story;
   return state.screen==='reveal'?withStory(state):state;
  }catch{return initialState();}
 }

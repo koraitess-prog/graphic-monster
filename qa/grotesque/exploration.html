@@ -1,0 +1,16 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GRAPHIC MONSTER — Grotesque studies</title><link rel="stylesheet" href="../../style.css"><link rel="stylesheet" href="../../night.css"><style>
+.review{max-width:1600px;margin:auto;padding:36px 40px 80px}.review header{display:flex;justify-content:space-between;align-items:center;margin-bottom:50px}.review h1{font:400 46px Georgia;margin:0;letter-spacing:-1.5px}.review a{font:13px Georgia;color:inherit}.review h2{font:12px Georgia;letter-spacing:.08em;font-weight:400;margin:30px 0 12px}.study-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:20px}.study{min-width:0;border-top:1px solid var(--line);padding-top:12px}.study canvas{display:block;width:100%;height:auto;aspect-ratio:600/760}.study p{font:15px Georgia;margin:12px 0 0}.study small{font:10px monospace;color:#747773}.previous{opacity:.85}.previous canvas{max-height:310px;object-fit:contain}@media(max-width:680px){.review{padding:25px 22px}.review h1{font-size:32px}.study-row{grid-template-columns:repeat(2,minmax(0,1fr))}.review header{gap:20px;align-items:baseline}.review a{font-size:11px}.previous canvas{max-height:none}}
+</style><body><main class="review"><header><h1>Creature studies</h1><a href="../../">Enter the laboratory ↗</a></header><h2>NEW / REBUILT ANATOMY</h2><div id="new" class="study-row"></div><h2>BEFORE / SAME DNA</h2><div id="old" class="study-row previous"></div></main><script type="module">
+import {generateMonster} from '../../src/dna.js';
+import {MonsterRenderer} from '../../src/renderer.js?v=mobile2';
+import {LivingArchive} from '../../src/archive-gallery.js?v=mobile2';
+import {loadPaintTiles} from '../../src/paint-cache.js?v=mobile2';
+const names=['Palimpsest','Cairn','Sallow','Hollow','Molt'];
+const recipes=['typography','grid','color','shape','texture'].map((principle,i)=>({principle,organization:i%2?'order':'experiment',gaze:i===3?'clarity':'expression',density:'rich',attitude:'playful'}));
+const records=recipes.map((a,i)=>({id:'study-'+i,name:names[i],seed:generateMonster(a).seed,scene:generateMonster(a)}));
+for(const version of [3,2]){
+ const root=document.querySelector(version===3?'#new':'#old');root.innerHTML=recipes.map((a,i)=>`<section class="study" ${version===3?`data-specimen="study-${i}"`:''}><canvas width="1" height="1" role="img" aria-label="${names[i]}, illustration version ${version}"></canvas><p>${names[i]}</p><small>${a.principle}</small></section>`).join('');
+ if(version===3)new LivingArchive(root,records);
+ else root.querySelectorAll('canvas').forEach((canvas,i)=>{const scene=generateMonster(recipes[i],2),renderer=new MonsterRenderer(canvas,{scale:.65,background:"#202426"});renderer.draw(scene);void loadPaintTiles(scene).then(()=>renderer.draw(scene));});
+}
+</script></body></html>

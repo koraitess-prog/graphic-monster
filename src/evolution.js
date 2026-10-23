@@ -1,3 +1,4 @@
+import {paperPrelude} from './collage.js';
 import {generateMonster,resample,QUESTIONS} from './dna.js';
 import {sample} from './anidoodle-kit.js';
 import {C} from './illustrations.js';
@@ -11,14 +12,14 @@ export function amorphousScene(){
 
 // Projection, not five separate drawings: stable anatomy IDs survive each stage.
 // Missing decisions never leak their default finished anatomy into the preview.
-export function evolutionScene(answers={}){
+export function evolutionScene(answers={},version=3){
  let stage=0;for(const q of QUESTIONS){if(!answers[q.key])break;stage++;}
- if(!stage)return amorphousScene();
- const scene=generateMonster(answers);
+ if(!stage)return version>=4?paperPrelude():amorphousScene();
+ const scene=generateMonster(answers,version);
  const structural=id=>id==='body'||id==='counter'||id==='belly-wash'||id.startsWith('color-mass')||id.startsWith('module-');
- scene.shapes=scene.shapes.filter(s=>structural(s.id)||(stage>=3&&s.stalk)||(stage>=4&&s.pattern)||stage===5);
+ scene.shapes=scene.shapes.filter(s=>(s.structural||structural(s.id))||(stage>=3&&s.stalk)||(stage>=4&&s.pattern)||stage===5);
  scene.lines=scene.lines.filter(s=>s.id==='counter-edge'||s.id.startsWith('grid-seam')||(stage>=4&&s.pattern)||stage===5);
  if(stage<3)scene.eyes=[];
- scene.attachments=scene.attachments.filter(a=>stage===5||(stage>=3&&a.id==='eye-stalk'));
+ scene.attachments=scene.attachments.filter(a=>stage===5||(stage>=3&&a.id.startsWith('eye-stalk')));
  return {...scene,stage};
 }

@@ -24,17 +24,18 @@ export function artBounds(scene){
 export function createPoster({answers,name,story,scene},canvasFactory){
  const factory=canvasFactory??((w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;});
  scene=scene??generateMonster(answers);
- const art=factory(1800,2280);new MonsterRenderer(art,{scale:3,canvasFactory:factory}).draw(scene);
- const poster=factory(1800,2520),ctx=poster.getContext('2d');ctx.fillStyle=PAPER;ctx.fillRect(0,0,1800,2520);
+ const night=scene.rulesVersion>=4,background=night?'#202426':PAPER,ink=night?'#e8ddba':C.ink;
+ const art=factory(1800,2280);new MonsterRenderer(art,{scale:3,canvasFactory:factory,background}).draw(scene);
+ const poster=factory(1800,2520),ctx=poster.getContext('2d');ctx.fillStyle=background;ctx.fillRect(0,0,1800,2520);
  const maxWidth=1480,fontFamily=displayFamily(name);let fontSize=180,nameLines;
  do{ctx.font=`900 ${fontSize}px ${fontFamily}`;nameLines=wrapText(ctx,name,maxWidth);if(nameLines.length<=2)break;fontSize-=4;}while(fontSize>=46);
- ctx.fillStyle=C.ink;ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.direction=/[\u0590-\u08ff]/u.test(name)?'rtl':'ltr';
+ ctx.fillStyle=ink;ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.direction=/[\u0590-\u08ff]/u.test(name)?'rtl':'ltr';
  const nameY=225,nameBottom=nameY+(nameLines.length-1)*fontSize*1.05;
  nameLines.forEach((line,i)=>ctx.fillText(line,160,nameY+i*fontSize*1.05));
  const bounds=artBounds(scene),artY=Math.max(340,nameBottom+85),availableH=1985-artY,k=Math.min(1480/bounds.w,availableH/bounds.h),dw=bounds.w*k,dh=bounds.h*k;
  ctx.drawImage(art,bounds.x*3,bounds.y*3,bounds.w*3,bounds.h*3,(1800-dw)/2,artY+(availableH-dh)/2,dw,dh);
- ctx.direction='ltr';ctx.font='35px Georgia, serif';ctx.fillStyle='#666a68';const descriptionLines=wrapText(ctx,story.text,maxWidth),descriptionY=2115;
+ ctx.direction='ltr';ctx.font='35px Georgia, serif';ctx.fillStyle=night?'#b8bfb0':'#666a68';const descriptionLines=wrapText(ctx,story.text,maxWidth),descriptionY=2115;
  descriptionLines.forEach((line,i)=>ctx.fillText(line,160,descriptionY+i*49));
- ctx.font='900 22px Georgia, serif';ctx.fillStyle=C.ink;ctx.fillText('GRAPHIC MONSTER',160,2440);
+ ctx.font='900 22px Georgia, serif';ctx.fillStyle=ink;ctx.fillText('GRAPHIC MONSTER',160,2440);
  return {canvas:poster,layout:{nameLines,descriptionLines,fontSize,fontFamily,nameBottom,descriptionBottom:descriptionY+(descriptionLines.length-1)*49,artBounds:bounds,artTop:artY,artBottom:artY+availableH}};
 }

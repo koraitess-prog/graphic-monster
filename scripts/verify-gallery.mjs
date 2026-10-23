@@ -9,6 +9,8 @@ const require=createRequire(path.join(path.resolve(process.argv[2]),'qa-loader.c
 const {createCanvas,Path2D,loadImage}=require('@napi-rs/canvas');globalThis.Path2D=Path2D;
 const manifest=JSON.parse(await readFile(new URL('../assets/paint/manifest.json',import.meta.url),'utf8'));
 registerPaintTiles(await Promise.all(manifest.map(async r=>[r.key,await loadImage(await readFile(new URL('../assets/paint/'+r.file,import.meta.url)))])));
+globalThis.fetch=async()=>{throw new Error('Network disabled in scheduler QA');};
+async function settlePaint(){for(let i=0;i<8;i++)await Promise.resolve();}
 let now=1,id=0;const timers=new Map(),frames=new Map(),listeners=new Map();let io;
 Object.defineProperty(globalThis,'performance',{value:{now:()=>now},configurable:true});
 globalThis.setTimeout=(fn,delay)=>{timers.set(++id,{fn,at:now+delay});return id;};globalThis.clearTimeout=id=>timers.delete(id);
@@ -16,16 +18,16 @@ globalThis.requestAnimationFrame=fn=>{frames.set(++id,fn);return id;};globalThis
 const media={matches:false,addEventListener:(_,fn)=>listeners.set('media',fn),removeEventListener:()=>listeners.delete('media')};globalThis.matchMedia=()=>media;
 globalThis.document={hidden:false,createElement:()=>createCanvas(1,1),addEventListener:(k,fn)=>listeners.set(k,fn),removeEventListener:k=>listeners.delete(k)};
 globalThis.IntersectionObserver=class{constructor(fn){this.fn=fn;io=this;}observe(){}disconnect(){this.closed=true;}emit(rows){this.fn(rows);}};
-const records=combinations().map((answers,i)=>({scene:generateMonster(answers),seed:i*71+1042,name:`Specimen ${i}`})),windows=records.map(()=>{const canvas=createCanvas(1,1);return {canvas,querySelector:()=>canvas};});
+const records=combinations().map((answers,i)=>({scene:generateMonster(answers),seed:i*71+1042,name:`Specimen ${i}`})),windows=records.map(()=>{const canvas=createCanvas(1,1);canvas.dataset={};return {canvas,querySelector:()=>canvas};});
 const gallery=new LivingArchive({querySelectorAll:()=>windows},records);
 assert.equal([...gallery.items.values()].filter(i=>i.renderer).length,0,'80 offscreen records allocate no renderers');
-io.emit(windows.slice(0,4).map(target=>({target,isIntersecting:true})));
+io.emit(windows.slice(0,4).map(target=>({target,isIntersecting:true})));await settlePaint();
 assert.equal([...gallery.items.values()].filter(i=>i.renderer).length,4);assert.equal(timers.size,1);assert.equal(frames.size,0);
 const deadlines=[...gallery.items.values()].filter(i=>i.visible).map(i=>i.due);assert.equal(new Set(deadlines).size,4,'greetings are staggered');
-for(let i=0;i<50;i++){now+=100;const due=[...timers].filter(([,v])=>v.at<=now);for(const [id,t] of due){timers.delete(id);t.fn();}const jobs=[...frames.values()];frames.clear();for(const fn of jobs)fn(now);}
+for(let i=0;i<90;i++){now+=100;const due=[...timers].filter(([,v])=>v.at<=now);for(const [id,t] of due){timers.delete(id);t.fn();}const jobs=[...frames.values()];frames.clear();for(const fn of jobs)fn(now);}
 assert.ok([...gallery.items.values()].some(i=>i.event>i.index),'greetings complete and enter quiet intervals');
-io.emit(windows.slice(0,4).map(target=>({target,isIntersecting:false})));assert.equal(timers.size,0);assert.equal(frames.size,0);assert.ok(windows.slice(0,4).every(w=>w.canvas.width<=2),'offscreen buffers released');
-io.emit(windows.slice(4,8).map(target=>({target,isIntersecting:true})));assert.equal([...gallery.items.values()].filter(i=>i.visible).length,4);
+io.emit(windows.slice(0,4).map(target=>({target,isIntersecting:false})));await settlePaint();assert.equal(timers.size,0);assert.equal(frames.size,0);assert.ok(windows.slice(0,4).every(w=>w.canvas.width<=2),'offscreen buffers released');
+io.emit(windows.slice(4,8).map(target=>({target,isIntersecting:true})));await settlePaint();assert.equal([...gallery.items.values()].filter(i=>i.visible).length,4);
 document.hidden=true;listeners.get('visibilitychange')();assert.equal(timers.size,0);assert.equal(frames.size,0);
 document.hidden=false;media.matches=true;listeners.get('media')();assert.equal(timers.size,0);assert.equal(frames.size,0);
 gallery.destroy();assert.equal(listeners.size,0);assert.equal(gallery.items.size,0);assert.ok(io.closed);

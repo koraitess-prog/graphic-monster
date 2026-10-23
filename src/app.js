@@ -1,3 +1,4 @@
+import {paperPrelude} from './collage.js';
 import {QUESTIONS,generateMonster,encodeDNA,decodeDNA} from './dna.js';
 import {evolutionScene,amorphousScene} from './evolution.js';
 import {CreatureView} from './renderer.js?v=mobile2';
@@ -9,12 +10,13 @@ import {displayFamily} from './typography.js';
 import {drawWordmark} from './wordmark.js';
 import {openArchive,makeRecord,mergeRecord} from './archive.js?v=mobile2';
 import {CollectionScreen,parseCollectionRoute} from './collection-screen.js?v=mobile2';
+import {decoratePaperTitles} from './paper-titles.js';
 
 const app=document.querySelector('#app'),copy=document.querySelector('#copy'),canvas=document.querySelector('#monster');
 const announcement=document.querySelector('#announcement'),dialog=document.querySelector('#name-dialog');
 const headerName=document.querySelector('#header-name'),caption=document.querySelector('#creature-caption');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)'),storageKey='graphic-monster:experience:v2';
-const dimensions=['Body','Organization','Gaze','Surface','Gesture'];
+const dimensions=['Language','Organization','Gaze','Surface','Gesture'];
 const feedback=['Taking shape.','Finding its balance.','Something is waking up.','Leaving an impression.','Becoming itself.'];
 const freshSeed=()=>crypto.getRandomValues(new Uint32Array(1))[0];
 const escape=text=>String(text??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -28,7 +30,8 @@ try{state=restoreState(sessionStorage.getItem(storageKey)??sessionStorage.getIte
 function applyHash(){if(state.screen==='reveal')return false;const match=location.hash.match(/^#dna=([0-4][01]{4})$/);if(!match)return false;const answers=decodeDNA(match[1]);const changed=encodeDNA(state.answers)!==match[1];state={...state,answers,step:4,story:changed?null:state.story};state=state.name?reducer(state,{type:'REVEAL'}):{...state,screen:'intro'};return true;}
 applyHash();
 try{archiveDB=await openArchive();records=await archiveDB.list();}catch{archiveFailure='The collection cannot be saved in this browser right now.';}
-const previewScene=()=>state.screen==='intro'?amorphousScene():state.screen==='reveal'?(records.find(r=>r.id===state.creationId)?.scene??evolutionScene(state.answers)):evolutionScene(state.answers);
+const visualAnswers=()=>({...state.answers,...(state.rulesVersion>=6&&state.visualSeed!==null?{seed:state.visualSeed}:{})});
+const previewScene=()=>state.screen==='intro'?(state.rulesVersion>=4?paperPrelude():amorphousScene()):state.screen==='reveal'?(records.find(r=>r.id===state.creationId)?.scene??evolutionScene(visualAnswers(),state.rulesVersion)):evolutionScene(visualAnswers(),state.rulesVersion);
 
 const view=new CreatureView(canvas,previewScene());
 function warmPaint(scene){void loadPaintTiles(scene).then(()=>{if(!app.hidden)view.renderer.draw(view.pose());});}
@@ -44,14 +47,15 @@ function announce(text){announcement.textContent=text;}
 function progress(){return `<nav class="dimension-nav" aria-label="Your five design decisions">${QUESTIONS.map((q,i)=>{const available=QUESTIONS.slice(0,i).every(p=>state.answers[p.key]);return `<button type="button" data-step="${i}" class="dimension${state.step===i?' current':''}${state.answers[q.key]?' complete':''}" ${available?'':'disabled'} ${state.step===i?'aria-current="step"':''} aria-label="${dimensions[i]}${state.answers[q.key]?`: ${labelFor(q,state.answers[q.key])}`:''}"><span class="progress-mark" aria-hidden="true"></span></button>`;}).join('')}</nav>`;}
 function answer(option,index){const[value,label,detail]=option,selected=state.answers[QUESTIONS[state.step].key]===value;return `<button type="button" class="choice${selected?' selected':''}" data-value="${value}" aria-pressed="${selected}" aria-label="${label}" title="${label}"><span class="choice-art">${visualSample(value)}</span></button>`;}
 function render({focus=false,selection=false}={}){
+ document.body.classList.toggle('intro-paper',state.screen==='intro'&&!parseCollectionRoute(location.hash));
  const wordmark=document.querySelector('.wordmark');wordmark.hidden=state.screen==='intro';if(state.screen==='reveal')wordmark.removeAttribute('href');else wordmark.setAttribute('href','./');wordmark.setAttribute('aria-label',state.screen==='reveal'?'GRAPHIC MONSTER':'Graphic Monster home');
- app.className=`experience screen-${state.screen}`;document.title=state.screen==='reveal'?`${state.name} — GRAPHIC MONSTER`:'GRAPHIC MONSTER — Your design decisions create a creature';
+ app.className=`experience screen-${state.screen}${state.rulesVersion>=4?" medium-paper":""}`;document.title=state.screen==='reveal'?`${state.name} — GRAPHIC MONSTER`:'GRAPHIC MONSTER — Your design decisions create a creature';
  document.querySelector('.header-actions [data-action="archive"]').hidden=false;
  headerName.hidden=state.screen!=='question';headerName.textContent=state.name;headerName.setAttribute('aria-label',`Edit ${state.name}’s name`);
  caption.textContent='';
  if(state.screen==='intro'){
-   copy.innerHTML=`<h1 class="intro-title furry-title" tabindex="-1"><span class="sr-only">GRAPHIC MONSTER</span><canvas id="title-art" aria-hidden="true"></canvas></h1><form id="create-form" class="name-form"><label class="sr-only" for="monster-name">Name</label><input id="monster-name" name="monsterName" placeholder="Name" value="${escape(state.name)}" required maxlength="48" autocomplete="off" dir="auto"><button class="name-submit" type="submit" aria-label="Start"><span aria-hidden="true">→</span></button></form>`;
-   drawWordmark(copy.querySelector('#title-art'));
+   copy.innerHTML=`${state.rulesVersion>=4?'<h1 class="intro-title paper-title" tabindex="-1">GRAPHIC<br>MONSTER</h1>':'<h1 class="intro-title furry-title" tabindex="-1"><span class="sr-only">GRAPHIC MONSTER</span><canvas id="title-art" aria-hidden="true"></canvas></h1>'}<form id="create-form" class="name-form"><label class="sr-only" for="monster-name">Name</label><input id="monster-name" name="monsterName" placeholder="Name" value="${escape(state.name)}" required maxlength="48" autocomplete="off" dir="auto"><button class="name-submit" type="submit" aria-label="Start"><span aria-hidden="true">→</span></button></form>`;
+   if(copy.querySelector('#title-art'))drawWordmark(copy.querySelector('#title-art'));
    document.querySelector('#stage-note').textContent='';
    canvas.setAttribute('aria-label','An amorphous living painting. No face or limbs yet.');
  }else if(state.screen==='question'){
@@ -70,6 +74,8 @@ function render({focus=false,selection=false}={}){
    document.querySelector('#stage-note').textContent='';canvas.setAttribute('aria-label',`${state.name}. ${story}`);
  }
  afterlife.hidden=state.screen!=='reveal';
+ if(state.rulesVersion>=6)decoratePaperTitles(copy);
+ window.dispatchEvent(new CustomEvent('graphic-monster:intro',{detail:state.screen==='intro'&&!parseCollectionRoute(location.hash)}));
  if(focus){
    copy.querySelector('h1')?.focus({preventScroll:true});
    if(state.screen==='question'&&matchMedia('(max-width:680px)').matches){
@@ -97,6 +103,7 @@ function returnToExperience(){
 async function routeCollection(){
  const route=parseCollectionRoute(location.hash);
  if(!route){collection.close();app.hidden=false;render();view.setVisible(true);return;}
+ document.body.classList.remove('intro-paper');
  clearTimeout(advanceTimer);app.hidden=true;afterlife.hidden=true;headerName.hidden=true;view.setVisible(false);
  document.querySelector('.header-actions [data-action="archive"]').hidden=true;
  collection.show(route,records,archiveFailure);
@@ -126,13 +133,13 @@ function dispatch(event,{focus=true,art=false}={}){
 }
 function choose(value){
  if(transitioning)return;
- const editing=complete();clearTimeout(advanceTimer);state=reducer(state,{type:'SELECT',value});const q=QUESTIONS[state.step];render({selection:true});view.update(evolutionScene(state.answers));warmPaint(evolutionScene(state.answers));announce(`${labelFor(q,value)} selected. ${feedback[state.step]}`);
+ const editing=complete();clearTimeout(advanceTimer);state=reducer(state,{type:'SELECT',value});const q=QUESTIONS[state.step];render({selection:true});view.update(evolutionScene(visualAnswers(),state.rulesVersion));warmPaint(evolutionScene(visualAnswers(),state.rulesVersion));announce(`${labelFor(q,value)} selected. ${feedback[state.step]}`);
  // Keep the existing 780ms morph; leave a short, quiet beat to see its settled shape.
- advanceTimer=setTimeout(()=>{dispatch({type:editing?'REVEAL':'ADVANCE'});announce(state.screen==='reveal'?`Meet ${state.name}.`:`Decision ${state.step+1} of five. ${QUESTIONS[state.step].title.replace('\n',' ')}`);},reduced.matches?650:1700);
+ advanceTimer=setTimeout(()=>{dispatch({type:editing?'REVEAL':'ADVANCE'});announce(state.screen==='reveal'?`${state.name} observed.`:`Decision ${state.step+1} of five. ${QUESTIONS[state.step].title.replace('\n',' ')}`);},reduced.matches?650:1700);
 }
 function openRename(){if(state.screen==='reveal')return;clearTimeout(advanceTimer);renameFocus=document.activeElement;const input=document.querySelector('#edit-monster-name');input.value=state.name;input.setCustomValidity('');dialog.showModal();input.focus();input.select();}
 function checkName(input){const name=normalizeName(input.value);input.setCustomValidity(name?'':'Enter a name.');return input.reportValidity()?name:null;}
-copy.addEventListener('submit',event=>{if(event.target.id!=='create-form')return;event.preventDefault();const name=checkName(copy.querySelector('#monster-name'));if(!name)return;dispatch({type:'START',name,seed:freshSeed(),id:crypto.randomUUID(),createdAt:Date.now()},{art:true});announce(`Let’s meet ${name}.`);});
+copy.addEventListener('submit',event=>{if(event.target.id!=='create-form')return;event.preventDefault();const name=checkName(copy.querySelector('#monster-name'));if(!name)return;dispatch({type:'START',name,seed:freshSeed(),id:crypto.randomUUID(),createdAt:Date.now()},{art:true});announce(`${name}.`);});
 copy.addEventListener('input',event=>{if(event.target.id==='monster-name'){event.target.setCustomValidity('');state=reducer(state,{type:'NAME',name:event.target.value});save();}});
 document.querySelector('#rename-form').addEventListener('submit',event=>{event.preventDefault();const name=checkName(document.querySelector('#edit-monster-name'));if(!name)return;state=reducer(state,{type:'NAME',name});dialog.close();render();announce(`Your creature is now called ${name}.`);headerName.focus({preventScroll:true});});
 document.querySelector('#edit-monster-name').addEventListener('input',event=>event.target.setCustomValidity(''));

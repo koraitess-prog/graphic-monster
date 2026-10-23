@@ -1,3 +1,4 @@
+import {specimenStory} from './specimen-story.js';
 import {normalizeAnswers,encodeDNA} from './dna.js';
 import {rng} from './anidoodle-kit.js';
 
@@ -27,7 +28,7 @@ const attitude={
  playful:['it waves at the next idea before it arrives','it signs off with a crooked grin and an extravagant wave','it gives the smallest discovery a wonderfully oversized welcome','it takes a bow that almost turns into a dance','it greets tomorrow as though they share a private joke']
 };
 export const wordCount=text=>text.trim().split(/\s+/u).length;
-export function generateStory(input,seed=0){
+export function generateLegacyStory(input,seed=0){
  const a=normalizeAnswers(input),code=encodeDNA(a);let hash=(seed>>>0)^0x9e3779b9;for(const ch of code)hash=Math.imul(hash^ch.charCodeAt(0),16777619);
  const random=rng(hash),pick=list=>list[Math.floor(random()*list.length)],f=family[a.principle];
  const act=pick(f.acts),place=pick(f.places),object=pick(f.objects),order=pick(organization[a.organization]),look=pick(gaze[a.gaze]),marks=pick(surface[a.density]),gesture=pick(attitude[a.attitude]);
@@ -42,3 +43,5 @@ export function generateStory(input,seed=0){
  // Shortest structure is bounded by the edited vocabulary, even for the longest units.
  return structures[0]();
 }
+
+export function generateStory(input,seed=0,version=3){return version>=3?specimenStory(input,seed):generateLegacyStory(input,seed);}

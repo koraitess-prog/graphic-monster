@@ -1,5 +1,5 @@
 // One optical size and a shared palette for every abstract answer symbol.
-const ink='#30313b',coral='#cf7866',teal='#658d87',ochre='#c7a14e';
+const ink='currentColor',coral='#cf7866',teal='#658d87',ochre='#c7a14e';
 const rect=(x,y,w,h,fill=ink)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"/>`;
 const circle=(x,y,r,fill=ink)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}"/>`;
 const path=(d,fill=ink)=>`<path d="${d}" fill="${fill}"/>`;

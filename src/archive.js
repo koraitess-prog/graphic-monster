@@ -3,8 +3,8 @@ export const ARCHIVE_VERSION=1;
 export const shortStatement=story=>String(story?.text??story??'').split(/(?<=[.!?])\s+/u)[0];
 export function makeRecord(state){
  if(state.screen!=='reveal'||!state.creationId||!state.story?.text)throw new Error('Only completed, identified creatures can be archived.');
- const scene=generateMonster(state.answers);
- return {version:ARCHIVE_VERSION,visualVersion:2,id:state.creationId,createdAt:state.createdAt??0,name:state.name,answers:structuredClone(state.answers),code:encodeDNA(state.answers),seed:scene.seed,story:structuredClone(state.story),originalStory:structuredClone(state.story),scene};
+ const scene=generateMonster({...state.answers,...(state.rulesVersion>=6&&state.visualSeed!==null?{seed:state.visualSeed}:{})},state.rulesVersion??2);
+ return {version:ARCHIVE_VERSION,visualVersion:state.rulesVersion??2,id:state.creationId,createdAt:state.createdAt??0,name:state.name,answers:structuredClone(state.answers),code:encodeDNA(state.answers),seed:scene.seed,story:structuredClone(state.story),originalStory:structuredClone(state.story),scene};
 }
 export function mergeRecord(existing,incoming){
  if(!existing)return incoming;
