@@ -1,0 +1,68 @@
+/* Night laboratory. Pigment and anatomy remain authored by the creature system. */
+:root{color-scheme:dark;--paper:#202426;--ink:#e2ddcb;--muted:#a4afa7;--line:#49514e;--accent:#c9ad76;background:var(--paper)}
+body{background:var(--paper);color:var(--ink)}
+.site-header{border-bottom:1px solid #39403e}
+.wordmark{letter-spacing:.03em;font-weight:400}
+.header-actions>.text-button{color:var(--muted)}
+.furry-title canvas{filter:invert(1) sepia(.18) brightness(.95)}
+.screen-intro .name-form input,#rename-form input{border-color:#798378;color:var(--ink)}
+.name-form input::placeholder{color:#adb3a7}
+.name-submit{color:var(--accent)}
+.name-submit:hover{color:#f2e5bf}
+.primary{background:#c8b58c;color:#202426}
+.primary:hover{background:#dfcca4}
+.counter,.dossier-number,.collection-count{color:var(--accent)}
+.counter>span{color:var(--muted)}
+.screen-question .choice{border-color:#4a5350;background:#252b2b;color:var(--ink);border-radius:0}
+.screen-question .choice:hover,.screen-question .choice:focus-visible{background:#303936;border-color:#a2b6a2}
+.screen-question .choice.selected{background:#3d4135;border-color:var(--accent)}
+.screen-question .choice.selected:after{background:var(--accent)}
+.screen-question .progress-mark{background:#4c5550}
+.screen-question .complete .progress-mark{background:#93a48f}
+.screen-question .question-title{color:#e2ddcb}
+.screen-reveal .reveal-name{color:#c2b7cd;font-weight:400;letter-spacing:-.055em}
+.hero-statement{color:#c9ad76}
+.personality,.full-story .personality,.dossier-story{color:#bac2b6}
+.habitat-room{background:var(--paper);border-color:#546259;border-radius:45% 45% 2px 2px / 27% 27% 2px 2px}
+.habitat-room:after{background:#46524b}
+.habitat:hover .habitat-room,.habitat:focus-visible .habitat-room{border-color:#c9ad76}
+.habitat-open{color:var(--accent)}
+.habitat-label{color:#d4cfbd}
+.specimen{border-color:var(--line)}
+.specimen canvas{background:var(--paper)}
+.empty-window{border-color:var(--line);color:var(--muted)}
+.poster-actions .visit-archive{border-color:#6d776a}
+dialog{border:1px solid var(--line)}
+dialog::backdrop{background:#080d10b8}
+::selection{background:#6c6652;color:#fff7df}
+@media(max-width:680px){.studio{background:var(--paper)}.site-header{height:64px}.screen-question .choice{background:#252b2b}}
+
+/* Cut-paper display: broad ink forms replace the old furry lettering. */
+ .medium-paper .paper-title{font:900 clamp(44px,4.6vw,78px)/1.01 Georgia,serif;letter-spacing:-.055em;color:#e8ddba;transform:rotate(-2deg)}
+.medium-paper .reveal-name{font-weight:900;color:#e8ddba}
+.medium-paper .hero-statement{color:#d5aa39}
+@media(max-width:680px){.medium-paper .paper-title{font-size:clamp(38px,10vw,60px)}}
+
+.all-creatures-link{font:12px Georgia,serif;text-decoration:none;color:var(--muted);display:inline-flex;align-items:center}
+@media(max-width:680px){.site-header:has(.header-name:not([hidden])) .all-creatures-link{display:none}}
+
+/* Individual printed scraps form the lettering, including the question titles. */
+.cut-title{line-height:1.3!important;letter-spacing:0!important}
+.cut-word{display:inline-flex;white-space:nowrap;margin:0 .14em .08em 0;vertical-align:middle}
+.cut-letter{display:inline-block;position:relative;isolation:isolate;background:var(--cut-stock);color:#181c1c;padding:.015em .055em .025em;margin:0 .012em;font-weight:900;line-height:1.08;transform:translateY(var(--cut-rise)) rotate(var(--cut-angle));clip-path:polygon(1% 3%,36% 0,98% 2%,100% 57%,97% 99%,61% 97%,0 100%,2% 45%)}
+.cut-letter[data-cut="1"]{font-family:Arial,sans-serif;font-weight:900;clip-path:polygon(3% 0,99% 3%,97% 42%,100% 98%,37% 100%,0 96%)}
+.cut-letter[data-cut="2"]{font-style:italic;background:#d6a333}
+.cut-letter[data-cut="3"]{background:#242828;color:#e8ddba;outline:1px solid #bbb29d;font-family:Georgia,serif}
+.cut-letter:before{content:"FORM · TYPE · 03";position:absolute;inset:0;z-index:-1;overflow:hidden;font:400 .12em/.9 Georgia;letter-spacing:-.02em;opacity:.22;word-break:break-all}
+.medium-paper .paper-title.cut-title{font-size:clamp(38px,4.1vw,72px);transform:none}
+.paper-title .cut-word{display:flex;width:fit-content}
+.question-title.cut-title{font-size:clamp(25px,2.6vw,43px);max-width:100%;margin-bottom:30px}
+.question-title .cut-letter{padding:.01em .035em}
+.paper-cover{position:fixed;inset:0;z-index:1000;overflow:hidden;background:transparent;touch-action:none;cursor:grab;user-select:none;overscroll-behavior:none}
+.paper-cover:not([data-ready]){background:#d8cfb4}
+.paper-cover[hidden]{display:none}
+.paper-cover:active{cursor:grabbing}
+.paper-cover canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.paper-skip{position:absolute;top:18px;left:18px;transform:translateY(-200%);padding:12px 24px;border:1px solid #151a1b;background:#e8ddba;color:#151a1b;font:16px Georgia;z-index:1}
+.paper-skip:focus-visible{transform:none;outline:3px solid #f05226;outline-offset:3px}
+@media(max-width:680px){.medium-paper .paper-title.cut-title{font-size:clamp(34px,8.5vw,52px)}.question-title.cut-title{font-size:clamp(25px,6vw,35px)}.cut-word{margin-right:.12em}}

@@ -11,7 +11,7 @@ npm start
 ```
 
 Open http://127.0.0.1:4318/. No package installation, backend, paid API or build
-step is required. `npm test` runs 23 regression tests.
+step is required. `npm test` runs the regression suite.
 
 ## The living collection
 
@@ -32,16 +32,33 @@ and individual idle poses. Reduced-motion preferences and hidden tabs pause anim
 
 ## Illustration system
 
-Five principles — Typography, Grid, Color, Shape and Texture — establish distinct
-anatomical families. Four subsequent choices influence organization, gaze, surface
-and gesture. All 80 combinations use deterministic vector anatomy and shared seeded
-paint textures. The original anatomy generator, morph system and paint renderer are
-preserved. Final creatures cannot return to the questionnaire or change their DNA.
+New creations use rendering rules v6. Eight anatomical constructions are independent
+of five paper vocabularies: Typography, Grid, Color, Shape and Texture. A creation's
+visual seed is chosen once, keeping the anatomical identity stable across questions.
+Order/Experiment changes the composition and proportions; Clarity/Expression changes
+the sockets and gaze; Minimal/Rich changes the actual piece count and overlaps;
+Precise/Playful changes posture, limbs and mouth. Question one replaces the physical
+cutout vocabulary without choosing a different species.
 
-The intro has contour-grown furry lettering. The final reveal is a living editorial
-poster; PNG export produces an 1800 × 2520 static composition with the name, creature
-and complete personality paragraph. Display fonts accommodate long and multilingual
-names. The earlier visual exploration remains available at `/studies.html`.
+The library contains 48 contour templates, including 13 patterned paper types.
+Typography includes printed newspaper columns, magazine fragments and oversized letters.
+Pleat has both the original side-eye arrangement and a large central orbital eye.
+The opening is a full-screen physical paper pile: hover/sweep with a mouse, swipe
+with a finger, or focus the Enter button to bypass it. Paper movement pauses in
+hidden tabs and respects reduced motion. Large headings use individual cut letters.
+
+Fragments fit anatomical carriers, keep inherited layering and protect the existing
+facial apertures. Carriers are invisible geometry; individual cutouts provide pigment.
+Patterns are printed into their paper before the ink-loss pass. Paper-local texture
+coordinates move with jumps, wrist rotations, bending arms and collage reassembly.
+
+The five-question experience remains at the root. Open /qa/paper-dna/index.html for
+an isolated body/language comparison with animated reassembly, or /all-monsters.html
+for the 80 deterministic DNA examples. The approved v5 Rift eye/motion review stays
+at /qa/character-review/rift.html. Versions 2–5 remain available for saved creatures;
+archive snapshots are never reinterpreted by v6. The production deployment is unchanged.
+
+PNG export produces an 1800 × 2520 composition with the creature's name and story.
 
 ## Source map
 
@@ -56,7 +73,7 @@ names. The earlier visual exploration remains available at `/studies.html`.
 
 ## Verification
 
-The 23 tests cover all 80 anatomies and flows, cumulative stages, morph continuity,
+The tests cover all 80 anatomies and flows, cumulative stages, morph continuity,
 pattern containment, final locks, immutable snapshots, identity, routes, escaped names,
 read-only profiles and narrative variation. Browser verification is documented in
 `qa/refinement/living-archive-verification.md`.
