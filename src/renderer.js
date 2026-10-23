@@ -1,3 +1,4 @@
+import {withMonsterMouth} from './monster-mouths.js';
 import {supportsFamilyMotion,familyPose,familyProfile,signatureAction} from './family-motion.js';
 import {engravingTile} from './engraving.js';
 import {paperAffine,paperPoint,paperBasis} from './paper-motion.js';
@@ -173,6 +174,7 @@ export class MonsterRenderer{
    for(const layer of styles){cumulative+=layer.weight;ctx.globalAlpha=layer.weight/cumulative;ctx.fillStyle=this.pattern(layer.style);ctx.fill(p);}ctx.globalAlpha=1;
  }
  draw(scene){
+   scene=withMonsterMouth(scene);
    const ctx=this.ctx;ctx.setTransform(this.scale,0,0,this.scale,0,0);ctx.clearRect(0,0,600,760);ctx.fillStyle=this.background;ctx.fillRect(0,0,600,760);ctx.lineCap='round';ctx.lineJoin='round';
    // A few understated graphite strokes ground the feet in the same paper.
    ctx.strokeStyle='#d4d0c4';ctx.lineWidth=.4;ctx.globalAlpha=.4;

@@ -1,3 +1,5 @@
+import {expressionPerformance,MOUTH_ACTIONS,MONSTER_ACTIONS} from './monster-expression.js';
+import {mouthFor} from './monster-mouths.js';
 import {buildFamilyRig} from './family-rig.js';
 import {solveLimb,characterActionPose,actionProfile} from './character-actions.js';
 import {bindLimbPoint} from './rift-motion.js';
@@ -21,12 +23,16 @@ const rotate=(p,c,a)=>{const x=p[0]-c[0],y=p[1]-c[1];return [c[0]+x*Math.cos(a)-
 export const supportsFamilyMotion=scene=>scene.rulesVersion>=6&&scene.stage===5&&!!FAMILY_PROFILES[scene.anatomy];
 export function familyProfile(scene){
  const [breath,stride,lift,jump,weight,sway,gesture]=FAMILY_PROFILES[scene.anatomy]??FAMILY_PROFILES.shape,play=scene.answers.attitude==='playful',seed=(scene.seed>>>0)%97/97;
- return {breathPeriod:breath*(.95+seed*.12)*(play?.86:1),stride,lift,jump,weight,sway,gesture,energy:play?1.09:1,elasticity:play?1:.65,phase:seed*Math.PI*2,walkDuration:(2.7+weight*.55)*(play?.9:1),runDuration:2.0,greetDuration:2.8+weight*.3,jumpDuration:2.1+weight*.18,lookDuration:2.8,stretchDuration:3.8,pause:5200+seed*3400};
+ return {breathPeriod:breath*(.95+seed*.12)*(play?.86:1),stride,lift,jump,weight,sway,gesture,energy:play?1.09:1,elasticity:play?1:.65,phase:seed*Math.PI*2,walkDuration:(2.7+weight*.55)*(play?.9:1),runDuration:2.0,greetDuration:2.8+weight*.3,jumpDuration:2.1+weight*.18,lookDuration:2.8,stretchDuration:3.8,openDuration:2.7,yawnDuration:5.4+weight*.3,irritatedDuration:2.9,chatterDuration:3.3,growlDuration:3.8,gaspDuration:2.5,grinDuration:3.5,suspiciousDuration:4.6,twitchDuration:2.3,startleDuration:2.5,creepDuration:7.6+weight*.6,inspectDuration:4.3,outburstDuration:1.9,sleepyDuration:8.3,pause:5200+seed*3400};
 }
 export function familyCapabilities(scene){
- const rig=buildFamilyRig(scene);return ['breathe',...(rig.legs.length?['walk']:['glide']),...(rig.legs.length===2&&rig.legs.every(p=>p.length>145)&&!['accordion'].includes(scene.anatomy)?['run']:[]),'jump','greet','look','stretch'];
+ const rig=buildFamilyRig(scene);return ['breathe',...(rig.legs.length?['walk']:['glide']),...(rig.legs.length===2&&rig.legs.every(p=>p.length>145)&&!['accordion'].includes(scene.anatomy)?['run']:[]),'jump','greet','look','stretch',...(mouthFor(scene)?MOUTH_ACTIONS:[]),...MONSTER_ACTIONS.filter(a=>a!=='creep'||rig.legs.length>0)];
 }
-export function signatureAction(scene,event=0){const sequence=scene.anatomy==='accordion'?['greet','stretch','look','jump']:scene.anatomy==='crane'?['look','greet','stretch','jump']:scene.anatomy==='knot'?['look','greet','stretch']:['greet','look','jump','stretch'];return sequence[(event+(scene.seed>>>0)%3)%sequence.length];}
+export function signatureAction(scene,event=0){
+ const lists={crane:['suspicious','look','inspect','yawn'],color:['grin','gasp','growl','greet'],grid:['suspicious','irritated','twitch','look'],accordion:['yawn','sleepy','growl','stretch'],typography:['grin','growl','irritated','greet','inspect'],shape:['yawn','suspicious','gasp','stretch'],texture:['chatter','twitch','inspect','startle'],knot:['suspicious','twitch','inspect','growl']};
+ const options=[...(lists[scene.anatomy]??lists.shape),...(scene.answers.attitude==='playful'?['outburst']:[])];
+ let n=Math.imul((scene.seed>>>0)^Math.imul(event+1,374761393),668265263);n=(n^(n>>>13))>>>0;return options[n%options.length];
+}
 export function familyEventProfile(scene,event=0){const action=signatureAction(scene,event),p=familyProfile(scene);return {pause:p.pause,duration:p[action+'Duration']*1000,action,signature:'family/'+scene.anatomy+'/'+action};}
 
 // The same fixed-length solver as Rift for two bones; FABRIK only for authored
@@ -55,36 +61,45 @@ export function gaitTargets(rig,profile,t,direction=1){
 }
 
 export function familyPose(scene,action='breathe',t=0,seconds=0,direction=1){
- const rig=buildFamilyRig(scene),p=familyProfile(scene);t=clamp(t);
+ const rig=buildFamilyRig(scene),p=familyProfile(scene);t=clamp(t);const cue=expressionPerformance(action,t,scene.seed);
  // Preserve the approved four Rift actions, including their exact fitted rig.
- if(rig.rift&&['breathe','walk','jump','greet'].includes(action))return characterActionPose(scene,rig.rift,action,t,seconds*actionProfile(scene).breathPeriod/p.breathPeriod,direction);
- const breath=(1-Math.cos(seconds/p.breathPeriod*Math.PI*2))*.5,env=Math.sin(Math.PI*t)**2;
+ if(rig.rift&&['breathe','walk','jump','greet'].includes(action)){const pose=characterActionPose(scene,rig.rift,action,t,seconds*actionProfile(scene).breathPeriod/p.breathPeriod,direction);return {...pose,faceFrame:{...pose.faceFrame,cue:expressionPerformance(action==='jump'?'gasp':action==='greet'?'grin':'breathe',t,scene.seed)}};}
+ const breath=(1-Math.cos(seconds/p.breathPeriod*Math.PI*2))*.5*(1-cue.freeze*.94),env=Math.sin(Math.PI*t)**2;
  let dx=0,dy=0,tilt=p.sway*.25*Math.sin(seconds*.6+p.phase)*breath,sx=1+.022*breath,sy=1+.015*breath,gait;
  if(['walk','run'].includes(action)&&rig.legs.length){gait=gaitTargets(rig,p,t,direction);dx=gait.dx;dy=gait.bounce*(action==='run'?1.5:1);tilt+=direction*p.sway*env;}
+ if(action==='creep'&&rig.legs.length){
+  const back=t>.5,u=back?(t-.5)*2:t*2,groups=rig.legs.length===3?3:2,steps=groups*2,phase=Math.min(steps-.000001,u*steps),step=Math.floor(phase),within=phase-step,paused=(step+ease((within-.14)/.72))/steps;
+  gait=gaitTargets(rig,{...p,stride:p.stride*.46,lift:p.lift*.62},paused,back?-direction:direction);const base=back?p.stride*.92*direction:0;gait.dx+=base;for(const [id,q]of gait.targets)gait.targets.set(id,[q[0]+base,q[1]]);dx=gait.dx;dy=9*env+gait.bounce*.25;
+ }
  if(action==='glide'&&!rig.legs.length){dx=p.stride*2*ease(t)*direction;dy=-8*env;}
- if(action==='jump'){
+ if(action==='jump'||action==='outburst'){
   const crouch=t<.27?ease(t/.18)*(1-ease((t-.18)/.09)):t>.68?Math.sin(clamp((t-.68)/.19)*Math.PI)*Math.exp(-Math.max(0,t-.77)*12):0;
   const flight=t>=.27&&t<=.68?4*((t-.27)/.41)*(1-(t-.27)/.41):0;
-  dy=crouch*(10+4*p.weight)-flight*p.jump*p.energy;sx+=crouch*.028;sy-=crouch*.045;tilt+=Math.sin(t*Math.PI*2)*p.sway*env;
+  dy=crouch*(10+4*p.weight)-flight*p.jump*p.energy*(action==='outburst'?.52:1);sx+=crouch*.028;sy-=crouch*.045;tilt+=Math.sin(t*Math.PI*2)*p.sway*env;
  }
- if(action==='stretch'){sx-=env*.018;sy+=env*.04;tilt+=env*p.sway;}
+ if(action==='stretch'||action==='yawn'){sx-=env*.018;sy+=env*(action==='yawn'?.05:.04);tilt+=env*p.sway;}
+ sx+=cue.brace*.019-cue.recoil*.025;sy-=cue.recoil*.035+cue.slump*.018;dy+=cue.brace*2+cue.recoil*7+cue.slump*9;dx-=cue.recoil*4;tilt+=cue.suspicion*.008+cue.twitch*.005+cue.brace*p.sway*.7;
  if(action==='greet')tilt-=env*p.sway*p.gesture;
  if(action==='look')tilt+=Math.sin(t*Math.PI*2)*p.sway*env;
  const torso=q=>add(rotate([rig.pelvis[0]+(q[0]-rig.pelvis[0])*sx,rig.pelvis[1]+(q[1]-rig.pelvis[1])*sy],rig.pelvis,tilt),[dx,dy]);
  // Sag just enough to keep even nearly straight crane legs grounded.
  // Contact targets win over torso travel; bones never stretch to reach them.
  let drop=0;for(const leg of rig.legs){const root=torso(leg.rest[0]),target=gait?.targets.get(leg.id)??leg.rest.at(-1),reach=leg.length;if(target[1]>root[1]&&dist(root,target)>reach+1e-6&&Math.abs(target[0]-root[0])<reach)drop=Math.max(drop,target[1]-root[1]-Math.sqrt(reach*reach-(target[0]-root[0])**2));}
- if(action!=='jump')dy+=drop;
+ if(action!=='jump'&&action!=='outburst')dy+=drop;
  const posed=new Map(),terminals=new Map();
  for(const leg of rig.legs){
   let target=gait?.targets.get(leg.id)??leg.rest.at(-1);
-  if(action==='jump'&&dy<0)target=add(target,[0,dy-(p.lift*.25)*env]);
+  if((action==='jump'||action==='outburst')&&dy<0)target=add(target,[0,dy-(p.lift*.25)*env]);
   const chain=solveChain(leg.rest,torso(leg.rest[0]),target);posed.set(leg.id,chain);
   if(leg.terminalId)terminals.set(leg.terminalId,{limb:leg,chain,rotation:gait?.moving.includes(leg.id)?.08*Math.sin(gait.u*Math.PI*2)*direction:0});
  }
  for(const [i,arm]of rig.arms.entries()){
   const root=torso(arm.rest[0]),side=arm.rest.at(-1)[0]>=arm.rest[0][0]?1:-1,secondary=Math.sin(seconds*.9-i*.63)*breath*.018;
   let target=rotate(torso(arm.rest.at(-1)),root,secondary+(gait?Math.sin(gait.phase*Math.PI+(i%2)*Math.PI)*.12*env:action==='jump'?Math.sin(t*10-i*.4)*.08*env:0)),roll;
+  if(cue.recoil)target=[mix(target[0],root[0],cue.recoil*.13),mix(target[1],root[1],cue.recoil*.13)];
+  if(action==='yawn'||action==='stretch'){target=add(target,[(arm.rest.at(-1)[0]-arm.rest[0][0])*cue.yawn*.10,-cue.yawn*6]);}
+  if(action==='twitch'&&i===scene.seed%rig.arms.length)target=rotate(target,root,cue.twitch*.14);
+  if(action==='inspect'&&i===0){target=[mix(target[0],root[0]+side*Math.min(48,arm.length*.34),cue.inspect),mix(target[1],root[1]-Math.min(78,arm.length*.46),cue.inspect)];roll=cue.inspect*.9;}
   if(action==='greet'){
    const delay=i*.055,raise=ease((t-.05-delay)/.27)*ease((1-t)/.28)*(i===0?1:.24),reach=Math.min(90,arm.length*.53),wave=Math.sin(t*16+i*.8)*env*.07*p.elasticity;
    target=[mix(target[0],Math.max(85,Math.min(470,root[0]+side*reach)),raise),mix(target[1],root[1]-Math.min(90,arm.length*.45),raise)];roll=Math.PI*raise+wave*raise;
@@ -101,11 +116,12 @@ export function familyPose(scene,action='breathe',t=0,seconds=0,direction=1){
    if(c)for(const l of [...rig.legs,...rig.arms])for(const joint of l.rest.slice(1,-1)){const d=dist(c,joint);if(!best||d<best.d)best={d,l};}if(best&&best.d<25)return move(q,best.l.id);
   }
   const stalkId=id.match(/^eye-(?:stalk|head|mask)-(\d+)/)?.[1],stalk=stalkId!==undefined?rig.stalks.find(s=>s.id==='eye-stalk-'+stalkId):null;
-  if(stalk){const r=(Math.sin(seconds*.65+Number(stalkId)*.8)-Math.sin(Number(stalkId)*.8))*.014*breath+(action==='look'||action==='greet'?Math.sin(t*Math.PI*2+Number(stalkId)*.35)*env*.045:0);return torso(rotate(q,stalk.root,r));}
+  if(stalk){const r=(Math.sin(seconds*.65+Number(stalkId)*.8)-Math.sin(Number(stalkId)*.8))*.014*breath+(action==='look'||action==='greet'?Math.sin(t*Math.PI*2+Number(stalkId)*.35)*env*.045:0)+cue.suspicion*(Number(stalkId)%2?-.05:.055);return torso(rotate(q,stalk.root,r));}
   if(id==='tail'){const root=scene.shapes.find(s=>s.id==='tail').points[0];return torso(rotate(q,root,Math.sin(seconds*.8)*breath*.035+Math.sin(t*8)*env*.035));}
   return torso(q);
  };
  const part=s=>{const id=s.motionPart??s.id,deform=q=>move(q,id),grid=limbById.has(id)?paperGrid(s.points):null;return {...s,paperRestPoints:s.points,points:s.points.map(deform),...(grid?{paperMaterial:{...grid,points:grid.rest.map(deform)}}:{}),...(s.anchor?{anchor:deform(s.anchor)}:{})};};
  const shapes=scene.shapes.map(part),blink=seconds%7.1;
- return {...scene,shapes,lines:scene.lines.map(part),body:shapes.find(s=>s.id==='body').points,eyes:scene.eyes.map((e,i)=>{const stalk=e.stalk?rig.stalks.reduce((a,s)=>!a||dist(s.root,e.anchor??[e.x,e.y])<dist(a.root,e.anchor??[e.x,e.y])?s:a,null):null,[x,y]=move([e.x,e.y],stalk?stalk.id:'body');return {...e,x,y,angle:(e.angle??0)+tilt,blink:Math.max(0,1-Math.abs(blink-4.1-i*.07)/.09),gaze:[e.gaze[0]+(action==='look'?Math.sin(t*Math.PI*2)*env*2.2:action==='greet'?env*1.2:0),e.gaze[1]-(action==='jump'?env:0)]};}),attachments:scene.attachments.map(a=>({...a,root:move(a.root,a.id)})),motionContacts:{limbs:posed,targets:gait?.targets??new Map()}};
+ if(action==='twitch'){const layer=shapes.find(s=>s.paperRole==='joint'&&s.clipParent==='body');if(layer)layer.points=layer.points.map(([x,y])=>[x+cue.twitch*.85,y-cue.twitch*.4]);}
+ return {...scene,faceFrame:{source:scene,mapPoint:move,cue},shapes,lines:scene.lines.map(part),body:shapes.find(s=>s.id==='body').points,eyes:scene.eyes.map((e,i)=>{const stalk=e.stalk?rig.stalks.reduce((a,s)=>!a||dist(s.root,e.anchor??[e.x,e.y])<dist(a.root,e.anchor??[e.x,e.y])?s:a,null):null,[x,y]=move([e.x,e.y],stalk?stalk.id:'body');return {...e,x,y,angle:(e.angle??0)+tilt,blink:Math.max(0,1-Math.abs(blink-4.1-i*.07)/.09),gaze:[e.gaze[0]+(cue.inspect&&rig.arms.length?Math.max(-1,Math.min(1,(posed.get(rig.arms[0].id).at(-1)[0]-e.x)/80))*2*cue.inspect:0)+(action==='look'?Math.sin(t*Math.PI*2)*env*2.2:action==='greet'?env*1.2:0),e.gaze[1]-(action==='jump'?env:0)]};}),attachments:scene.attachments.map(a=>({...a,root:move(a.root,a.id)})),motionContacts:{limbs:posed,targets:gait?.targets??new Map()}};
 }

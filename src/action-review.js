@@ -12,7 +12,7 @@ let action='breathe',started=performance.now(),baseX=0,direction=1,frame=0,last=
 function positioned(pose,x){
  if(!x)return pose;
  const move=([u,v])=>[u+x,v],part=p=>({...p,points:p.points.map(move),...(p.paperMaterial?{paperMaterial:{...p.paperMaterial,points:p.paperMaterial.points.map(move)}}:{})});
- const shapes=pose.shapes.map(part);return {...pose,shapes,lines:pose.lines.map(part),eyes:pose.eyes.map(e=>({...e,x:e.x+x})),body:shapes.find(p=>p.id==='body').points,attachments:pose.attachments.map(a=>({...a,root:move(a.root)}))};
+ const shapes=pose.shapes.map(part);return {...pose,...(pose.faceFrame?{faceFrame:{...pose.faceFrame,mapPoint:(q,id)=>move(pose.faceFrame.mapPoint(q,id))}}:{}),shapes,lines:pose.lines.map(part),eyes:pose.eyes.map(e=>({...e,x:e.x+x})),body:shapes.find(p=>p.id==='body').points,attachments:pose.attachments.map(a=>({...a,root:move(a.root)}))};
 }
 const duration=()=>profile[action+'Duration']??1;
 function draw(now){

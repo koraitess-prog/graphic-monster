@@ -1,4 +1,4 @@
-import {supportsFamilyMotion,familyPose,familyProfile} from './family-motion.js';
+import {supportsFamilyMotion,familyPose,familyProfile,signatureAction} from './family-motion.js';
 import {loadPaintTiles} from './paint-cache.js?v=mobile2';
 import {MonsterRenderer} from './renderer.js?v=mobile2';
 import {idlePose,motionProfile} from './motion.js';
@@ -28,8 +28,8 @@ export class LivingArchive{
   for(const item of this.items.values()){
    if(!item.visible)continue;
    if(!item.active&&now>=item.due&&slots>0){slots--;item.active=true;item.canvas.dataset.motion='greeting';item.start=now;item.last=0;}
-   if(item.active){const family=supportsFamilyMotion(item.record.scene),duration=family?familyProfile(item.record.scene).greetDuration*1000:motionProfile(item.record.scene,item.event).duration,t=Math.min(1,(now-item.start)/duration);
-    if(now-item.last>50||t===1){item.renderer.draw(family?familyPose(item.record.scene,'greet',t,now/1000+item.index*.7):idlePose(item.record.scene,t,item.event));item.last=now;}
+   if(item.active){const family=supportsFamilyMotion(item.record.scene),performanceAction=family?signatureAction(item.record.scene,item.event):'greet',duration=family?familyProfile(item.record.scene)[performanceAction+'Duration']*1000:motionProfile(item.record.scene,item.event).duration,t=Math.min(1,(now-item.start)/duration);
+    if(now-item.last>50||t===1){item.renderer.draw(family?familyPose(item.record.scene,performanceAction,t,now/1000+item.index*.7):idlePose(item.record.scene,t,item.event));item.last=now;}
     if(t===1){item.active=false;item.canvas.dataset.motion='rest';item.event++;item.due=now+7500+(item.record.seed*71+item.event*631)%9000;}else moving=true;
    }
    if(!item.active){
