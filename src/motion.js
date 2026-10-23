@@ -1,3 +1,4 @@
+import {supportsFamilyMotion,familyEventProfile,familyPose,familyProfile} from './family-motion.js';
 import {riftIdlePose} from './rift-motion.js';
 import {paperLivingPose} from './paper-behavior.js';
 // Pure, replayable poses. The browser owns clocks and quiet intervals. Each event
@@ -42,12 +43,14 @@ export function legacyIdlePose(scene,t,event=0){
 }
 
 export function motionProfile(scene,event=0){
+ if(supportsFamilyMotion(scene))return familyEventProfile(scene,event);
  if(scene.behavior==='lively'&&scene.stage===5)return {pause:2500+(scene.seed*37+event*251)%1400,duration:event%3===1?2850:1700,signature:'rift/lively/'+scene.code+'/'+event%3};
  if(!(scene.rulesVersion>=3))return legacyMotionProfile(scene,event);
  if(scene.rulesVersion>=5&&['accordion','crane','knot'].includes(scene.anatomy)){const [pause,duration]={accordion:[8300,3300],crane:[11200,4100],knot:[6100,2200]}[scene.anatomy];return {pause:pause+(scene.seed*43+event*911)%2800,duration,signature:'v5/'+scene.anatomy+'/'+Object.values(scene.answers).join('/')};}
  return {pause:6500+(scene.seed*43+event*911)%5000,duration:2600+(scene.seed%5)*230,signature:'v3/'+[scene.family,...Object.values(scene.answers)].join('/')};
 }
 export function idlePose(scene,t,event=0){
+ if(supportsFamilyMotion(scene)){if(t<=0||t>=1)return scene;const p=familyEventProfile(scene,event);return familyPose(scene,p.action,t,t*familyProfile(scene).breathPeriod);}
  if(scene.behavior==='lively'&&scene.stage===5)return riftIdlePose(scene,t,event);
  if(scene.rulesVersion>=6)return paperLivingPose(scene,t,event);
  if(!(scene.rulesVersion>=3))return legacyIdlePose(scene,t,event);

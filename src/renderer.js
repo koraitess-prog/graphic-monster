@@ -1,3 +1,4 @@
+import {supportsFamilyMotion,familyPose,familyProfile,signatureAction} from './family-motion.js';
 import {engravingTile} from './engraving.js';
 import {paperAffine,paperPoint,paperBasis} from './paper-motion.js';
 import {paint,C,PAPER} from './illustrations.js';
@@ -235,7 +236,7 @@ export class CreatureView{
    if(!this.start)return this.scene;
    return interpolateScene(this.from,this.target,springProgress(Math.min(1,(now-this.start)/this.duration)));
  }
- stop(){cancelAnimationFrame(this.raf);clearTimeout(this.timer);this.idle=false;}
+ stop(){cancelAnimationFrame(this.raf);clearTimeout(this.timer);this.idle=false;this.familyLoop=false;this.familyAction=null;}
  update(target,{immediate=false}={}){
    const now=performance.now();this.from=this.pose(now);this.stop();this.target=target;this.renderer.canvas.setAttribute('data-stage',String(target.stage));
    if(immediate||this.motion.matches||document.hidden){this.finish();return;}
@@ -250,19 +251,36 @@ export class CreatureView{
    };this.raf=requestAnimationFrame(frame);
  }
  setVisible(visible){if(this.visible===visible)return;this.visible=visible;if(!visible)this.finish();else this.schedule();}
- greet(delay=0){clearTimeout(this.timer);if(this.visible&&!this.motion.matches&&!document.hidden&&!this.start)this.timer=setTimeout(()=>this.animateIdle(),delay);}
+ greet(delay=0){if(supportsFamilyMotion(this.target)){this.familyRequested={action:signatureAction(this.target,this.event),at:performance.now()+delay};this.animateFamily();return;}clearTimeout(this.timer);if(this.visible&&!this.motion.matches&&!document.hidden&&!this.start)this.timer=setTimeout(()=>this.animateIdle(),delay);}
  schedule(){
    clearTimeout(this.timer);if(!this.visible||this.motion.matches||document.hidden||this.start)return;
+   if(supportsFamilyMotion(this.target)){this.timer=setTimeout(()=>this.animateFamily(),0);return;}
    this.timer=setTimeout(()=>this.animateIdle(),motionProfile(this.target,this.event).pause);
  }
  play(event=0){if(this.motion.matches||!this.visible||document.hidden)return;this.stop();this.start=0;this.scene=this.target;this.event=event;this.animateIdle();}
  animateIdle(){
+   if(supportsFamilyMotion(this.target)){this.familyRequested={action:signatureAction(this.target,this.event),at:performance.now()};this.animateFamily();return;}
    if(!this.visible||this.motion.matches||document.hidden||this.start)return;
    this.idle=true;const begun=performance.now(),profile=motionProfile(this.target,this.event),samples=[];this.renderer.resize(1);let last=0;
    const frame=now=>{
      const t=Math.min(1,(now-begun)/profile.duration);
      if(now-last>=32||t===1){const started=performance.now();this.scene=idlePose(this.target,t,this.event);this.renderer.draw(this.scene);samples.push(performance.now()-started);last=now;}
      if(t<1)this.raf=requestAnimationFrame(frame);else{samples.sort((a,b)=>a-b);this.renderer.canvas.setAttribute('data-idle-frames',String(samples.length));this.renderer.canvas.setAttribute('data-idle-p95',String(samples[Math.floor(samples.length*.95)]?.toFixed(2)));this.idle=false;this.event++;this.scene=this.target;this.renderer.resize(2);this.renderer.draw(this.scene);this.schedule();}
+   };this.raf=requestAnimationFrame(frame);
+ }
+ animateFamily(){
+   if(this.familyLoop||!this.visible||this.motion.matches||document.hidden||this.start)return;
+   clearTimeout(this.timer);this.familyLoop=true;this.idle=true;const p=familyProfile(this.target);this.familyEpoch??=performance.now();this.familyDue??=performance.now()+p.pause;this.renderer.resize(1.5);let last=0;
+   const frame=now=>{
+    if(!this.familyLoop||!this.visible||this.motion.matches||document.hidden)return;
+    if(!this.familyAction&&((this.familyRequested&&now>=this.familyRequested.at)||now>=this.familyDue)){
+     const action=this.familyRequested?.action??signatureAction(this.target,this.event);this.familyRequested=null;this.familyAction={action,start:now,duration:p[action+'Duration']*1000};
+    }
+    if(now-last>=33){const current=this.familyAction,t=current?Math.min(1,(now-current.start)/current.duration):0;
+     this.scene=familyPose(this.target,current?.action??'breathe',t,(now-this.familyEpoch)/1000);this.renderer.draw(this.scene);this.renderer.canvas.dataset.familyAction=current?.action??'breathe';last=now;
+     if(current&&t>=1){this.familyAction=null;this.familyDue=now+p.pause;this.event++;}
+    }
+    this.raf=requestAnimationFrame(frame);
    };this.raf=requestAnimationFrame(frame);
  }
  finish(){this.stop();this.start=0;this.scene=this.target;this.renderer.resize(2);this.renderer.draw(this.target);this.renderer.canvas.setAttribute('aria-busy','false');this.schedule();}

@@ -1,3 +1,4 @@
+import {supportsFamilyMotion,familyPose,familyProfile} from './family-motion.js';
 import {loadPaintTiles} from './paint-cache.js?v=mobile2';
 import {MonsterRenderer} from './renderer.js?v=mobile2';
 import {idlePose,motionProfile} from './motion.js';
@@ -23,15 +24,18 @@ export class LivingArchive{
  }
  tick(now){
   if(document.hidden||this.media.matches)return;
-  let moving=false,next=Infinity;
+  let moving=false,next=Infinity;let slots=Math.max(0,2-[...this.items.values()].filter(i=>i.visible&&i.active).length),idleBudget=2;
   for(const item of this.items.values()){
    if(!item.visible)continue;
-   if(!item.active&&now>=item.due){item.active=true;item.canvas.dataset.motion='greeting';item.start=now;item.last=0;}
-   if(item.active){const duration=motionProfile(item.record.scene,item.event).duration,t=Math.min(1,(now-item.start)/duration);
-    if(now-item.last>50||t===1){item.renderer.draw(idlePose(item.record.scene,t,item.event));item.last=now;}
+   if(!item.active&&now>=item.due&&slots>0){slots--;item.active=true;item.canvas.dataset.motion='greeting';item.start=now;item.last=0;}
+   if(item.active){const family=supportsFamilyMotion(item.record.scene),duration=family?familyProfile(item.record.scene).greetDuration*1000:motionProfile(item.record.scene,item.event).duration,t=Math.min(1,(now-item.start)/duration);
+    if(now-item.last>50||t===1){item.renderer.draw(family?familyPose(item.record.scene,'greet',t,now/1000+item.index*.7):idlePose(item.record.scene,t,item.event));item.last=now;}
     if(t===1){item.active=false;item.canvas.dataset.motion='rest';item.event++;item.due=now+7500+(item.record.seed*71+item.event*631)%9000;}else moving=true;
    }
-   if(!item.active)next=Math.min(next,item.due);
+   if(!item.active){
+    if(supportsFamilyMotion(item.record.scene)&&idleBudget>0&&now-(item.breathed??0)>350){item.renderer.draw(familyPose(item.record.scene,'breathe',0,now/1000+item.index*.7));item.breathed=now;idleBudget--;}
+    next=Math.min(next,Math.max(now+180,item.due),now+350);
+   }
   }
   if(moving)this.raf=requestAnimationFrame(t=>this.tick(t));else if(Number.isFinite(next))this.timer=setTimeout(()=>this.tick(performance.now()),Math.max(0,next-performance.now()));
  }

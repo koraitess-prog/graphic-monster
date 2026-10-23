@@ -8,7 +8,7 @@ await rm(out,{recursive:true,force:true});await mkdir(out);
 await mkdir(path.join(out,'qa/collage'),{recursive:true});
 await mkdir(path.join(out,'qa/character-review'),{recursive:true});
 await mkdir(path.join(out,'qa/paper-dna'),{recursive:true});
-for(const name of ['index.html','style.css','night.css','interface-type.css','gallery.css','all-monsters.html','qa/collage/index.html','qa/character-review/rift.html','qa/character-review/motion.html','qa/paper-dna/index.html','src','assets','NOTICE.md','vendor'])await cp(path.join(root,name),path.join(out,name),{recursive:true});
+for(const name of ['index.html','style.css','night.css','interface-type.css','gallery.css','all-monsters.html','qa/collage/index.html','qa/character-review/rift.html','qa/character-review/motion.html','qa/character-review/families.html','qa/paper-dna/index.html','src','assets','NOTICE.md','vendor'])await cp(path.join(root,name),path.join(out,name),{recursive:true});
 const manifest=JSON.parse(await readFile(path.join(out,'assets/paint/manifest.json'),'utf8'));
 for(const {file} of manifest)await access(path.join(out,'assets/paint',file));
 console.log(`Static site ready in dist (${manifest.length} shared paint textures).`);
