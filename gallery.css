@@ -52,3 +52,19 @@
 @media(max-width:680px){.atlas-header{height:64px}.atlas-header,.atlas-main{padding-inline:18px}.atlas-heading{margin:30px 0 18px}.atlas-filters{position:static;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.atlas-filters label:first-child{grid-column:1/-1}.atlas-filters select{font-size:14px}.atlas-note{gap:10px;align-items:flex-start;margin-bottom:20px}.atlas-note p{max-width:230px;font-size:11px}.possibility-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 12px}.possibility-copy{padding:0 10px 12px}.answer-list{font-size:11px;gap:7px 5px}.answer-list small{font-size:8px}.possibility-id h3{font-size:10px}.select-creature{font-size:10px}.family-heading h2{font-size:23px}.creature-family{margin-bottom:40px}.compare-bar{padding:12px 18px}.compare-bar>div{gap:16px}.compare-bar .primary{min-height:43px;padding:0 14px}.compare-bar>span{font-size:12px}#creature-comparison{width:calc(100vw - 20px);padding:18px 15px}#comparison-content{grid-template-columns:repeat(2,minmax(0,1fr))}.comparison-specimen canvas{height:36svh}.comparison-specimen .answer-list{grid-template-columns:1fr}.comparison-specimen h3{font-size:13px}}
 
 #comparison-content:has(>.comparison-specimen:only-child){grid-template-columns:1fr}
+
+/* The full DNA collection uses the same open, living display rhythm as Archive. */
+.atlas-heading h1{font:400 clamp(38px,5vw,76px)/1.1 var(--type-display);letter-spacing:-.04em}
+.possibility-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:46px 36px;align-items:start}
+.possibility{border:0;background:none}
+.possibility{padding-top:0}
+.possibility-art{border-bottom:1px solid #49514e;overflow:hidden}
+.possibility-art canvas{padding-top:5%;aspect-ratio:600/720;object-fit:contain}
+.possibility-art:hover,.possibility-art:focus-visible{border-color:#e8ddba}
+.possibility-copy{padding:0 0 16px}
+.possibility-id{border-top:0}
+.possibility[data-selected="true"] .possibility-art{border-bottom:3px solid var(--accent)}
+.answer-list{color:#b3b8aa;font-size:11px}
+.atlas-filters{background:var(--paper)}
+@media(max-width:1000px){.possibility-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:30px 24px}}
+@media(max-width:680px){.possibility-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 18px}.possibility:nth-child(n){padding-top:0}.possibility-copy{padding:0 0 10px}.answer-list{font-size:10px}.answer-list small{font-size:9px}}

@@ -1,10 +1,11 @@
 import {QUESTIONS,combinations,generateMonster,encodeDNA} from './dna.js';
+import {LivingArchive} from './archive-gallery.js';
 import {MonsterRenderer} from './renderer.js?v=mobile2';
 import {decoratePaperTitles} from './paper-titles.js';
 decoratePaperTitles();
 
 const dimensions=['Language','Organization','Gaze','Surface','Gesture'];
-const records=combinations().map(answers=>({code:encodeDNA(answers),answers,scene:generateMonster(answers,6)}));
+const records=combinations().map(answers=>{const scene=generateMonster(answers,6);return {code:encodeDNA(answers),answers,scene,seed:scene.seed};});
 const byCode=new Map(records.map(record=>[record.code,record]));
 const filters=document.querySelector('#atlas-filters'),root=document.querySelector('#all-creatures');
 const selected=new Set(),dialog=document.querySelector('#creature-comparison'),bar=document.querySelector('.compare-bar');
@@ -18,7 +19,7 @@ filters.innerHTML=QUESTIONS.map((q,i)=>`<label>${dimensions[i]}<select name="${q
 for(const [family,name] of QUESTIONS[0].options){
  const section=document.createElement('section');section.className='creature-family';section.dataset.family=family;
  const familyRecords=records.filter(r=>r.answers.principle===family);
- section.innerHTML=`<header class="family-heading"><h2>${name}</h2><span class="family-count">16</span></header><div class="possibility-grid">${familyRecords.map(record=>`<article class="possibility" data-code="${record.code}" data-anatomy="${record.scene.anatomy}" data-selected="false"><button class="possibility-art" type="button" data-inspect="${record.code}" aria-label="View creature ${record.code}: ${label(record)}"><canvas width="1" height="1" aria-hidden="true"></canvas></button><div class="possibility-copy"><div class="possibility-id"><h3>${record.code}</h3><button class="select-creature" type="button" data-select="${record.code}" aria-pressed="false" aria-label="Compare creature ${record.code}">Compare</button></div>${answerList(record)}</div></article>`).join('')}</div>`;
+ section.innerHTML=`<header class="family-heading"><h2>${name}</h2><span class="family-count">16</span></header><div class="possibility-grid">${familyRecords.map(record=>`<article class="possibility" data-code="${record.code}" data-anatomy="${record.scene.anatomy}" data-selected="false"><button class="possibility-art" type="button" data-specimen="${record.code}" data-inspect="${record.code}" aria-label="View creature ${record.code}: ${label(record)}"><canvas width="1" height="1" aria-hidden="true"></canvas></button><div class="possibility-copy"><div class="possibility-id"><h3>${record.code}</h3><button class="select-creature" type="button" data-select="${record.code}" aria-pressed="false" aria-label="Compare creature ${record.code}">Compare</button></div>${answerList(record)}</div></article>`).join('')}</div>`;
  root.append(section);
 }
 
@@ -29,18 +30,12 @@ function drawTo(canvas,record,width=420){
  renderer.draw(record.scene);canvas.width=width;canvas.height=Math.round(width*760/600);
  canvas.getContext('2d').drawImage(staging,0,0,canvas.width,canvas.height);
 }
-const observer=new IntersectionObserver(entries=>{
- for(const entry of entries){const card=entry.target,canvas=card.querySelector('canvas');
-  if(entry.isIntersecting&&!card.hidden){if(canvas.width===1)drawTo(canvas,byCode.get(card.dataset.code));}
-  else{canvas.width=1;canvas.height=1;}
- }
-},{rootMargin:'400px 0px'});
-cards.forEach(card=>observer.observe(card));
+const gallery=new LivingArchive(root,records);
 
 function applyFilters(){
  const query=new URLSearchParams();let count=0;
  for(const record of records){const matches=QUESTIONS.every(q=>!filters.elements[q.key].value||record.answers[q.key]===filters.elements[q.key].value),card=cards.get(record.code);card.hidden=!matches;
-  observer.unobserve(card);observer.observe(card);if(matches)count++;else{const canvas=card.querySelector('canvas');canvas.width=1;canvas.height=1;}
+  if(matches)count++;
  }
  for(const section of root.children){const count=[...section.querySelectorAll('.possibility')].filter(card=>!card.hidden).length;section.hidden=!count;section.querySelector('.family-count').textContent=count;}
  for(const q of QUESTIONS)if(filters.elements[q.key].value)query.set(q.key,filters.elements[q.key].value);

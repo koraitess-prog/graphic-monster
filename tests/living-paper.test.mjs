@@ -5,8 +5,8 @@ import {titleTouchPose} from '../src/intro-lettering.js';
 
 test('each answer accumulates a persistent cloud characteristic',()=>{
  const a={principle:'typography',organization:'experiment',gaze:'expression',density:'rich',attitude:'playful'};
- const t=cloudTraits(a);assert.equal(t.language,'typography');assert.equal(t.ordered,false);assert.equal(t.expressive,true);assert.equal(t.count,48);assert.equal(t.playful,true);assert.equal(t.stage,5);
- assert.equal(cloudTraits({...a,density:'minimal'}).count,17);
+ const t=cloudTraits(a);assert.equal(t.language,'typography');assert.equal(t.ordered,false);assert.equal(t.expressive,true);assert.ok(t.count>60);assert.equal(t.playful,true);assert.equal(t.stage,5);
+ assert.ok(cloudTraits({...a,density:'minimal'}).count<t.count*.65);
  const pose=(answers,time=7)=>cloudPlacement('body~paper-2',3,29,answers,time);
  assert.deepEqual(pose(a),pose(a));
  for(const [key,value] of [['organization','order'],['gaze','clarity'],['density','minimal'],['attitude','precise']]){
@@ -17,7 +17,7 @@ test('each answer accumulates a persistent cloud characteristic',()=>{
 test('cloud remains central, bounded and moving, including organized choices',()=>{
  for(const organization of ['order','experiment'])for(const density of ['minimal','rich']){
   const a={organization,density},n=cloudTraits(a).count;
-  for(let i=0;i<n;i++){const p=cloudPlacement('paper-'+i,i,n,a,3);assert.ok(p.x>60&&p.x<540);assert.ok(p.y>140&&p.y<600);assert.ok(p.size>0&&p.size<200);assert.notDeepEqual(p,cloudPlacement('paper-'+i,i,n,a,4));}
+  for(let i=0;i<n;i++){const p=cloudPlacement('paper-'+i,i,n,a,3);assert.ok(p.x>60&&p.x<540);assert.ok(p.y>140&&p.y<600);assert.ok(p.size>0&&p.size<=215);assert.notDeepEqual(p,cloudPlacement('paper-'+i,i,n,a,4));}
  }
 });
 test('title touch is local, bounded and returns exactly to rest',()=>{

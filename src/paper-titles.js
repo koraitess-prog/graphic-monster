@@ -1,8 +1,12 @@
 import {mountIntroLettering} from './intro-lettering.js';
+import {mountCreatureName} from './creature-lettering.js';
 const stocks=['#e6ddc5','#c9bb9b','#d6a333','#dcd3bc','#b7a4b8','#e6ddc5'];
 export function decoratePaperTitles(root=document){
  for(const title of root.querySelectorAll('h1:not([data-paper-letters])')){
   if(title.querySelector('canvas'))continue;
+  if(title.matches('.reveal-name,.dossier-copy h1')){mountCreatureName(title);continue;}
+  if(title.matches('.collection-heading h1')){const count=title.querySelector('.collection-count');count?.remove();mountCreatureName(title);if(count)title.append(count);continue;}
+  if(title.matches('.question-title,.atlas-heading h1'))continue;
   if(title.classList.contains('intro-title')){mountIntroLettering(title);
    const support=document.createElement('p');support.className='intro-caption';support.textContent='Your design, alive.';title.after(support);continue;}
   const count=title.querySelector('.collection-count'),badge=count?.cloneNode(true);

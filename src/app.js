@@ -4,7 +4,7 @@ import {QUESTIONS,generateMonster,encodeDNA,decodeDNA} from './dna.js';
 import {evolutionScene,amorphousScene} from './evolution.js';
 import {CreatureView} from './renderer.js?v=mobile2';
 import {initialState,reducer,restoreState,normalizeName} from './state.js';
-import {visualSample} from './samples.js';
+import {visualChoice} from './samples.js';
 import {createPoster} from './poster.js';
 import {loadPaintTiles} from './paint-cache.js?v=mobile2';
 import {displayFamily} from './typography.js';
@@ -47,7 +47,7 @@ function save(){
 }
 function announce(text){announcement.textContent=text;}
 function progress(){return `<nav class="dimension-nav" aria-label="Your five design decisions">${QUESTIONS.map((q,i)=>{const available=QUESTIONS.slice(0,i).every(p=>state.answers[p.key]);return `<button type="button" data-step="${i}" class="dimension${state.step===i?' current':''}${state.answers[q.key]?' complete':''}" ${available?'':'disabled'} ${state.step===i?'aria-current="step"':''} aria-label="${dimensions[i]}${state.answers[q.key]?`: ${labelFor(q,state.answers[q.key])}`:''}"><span class="progress-mark" aria-hidden="true"></span></button>`;}).join('')}</nav>`;}
-function answer(option,index){const[value,label,detail]=option,selected=state.answers[QUESTIONS[state.step].key]===value;return `<button type="button" class="choice${selected?' selected':''}" data-value="${value}" aria-pressed="${selected}" aria-label="${label}" title="${label}"><span class="choice-art">${visualSample(value)}</span></button>`;}
+function answer(option,index){const[value,label,detail]=option,selected=state.answers[QUESTIONS[state.step].key]===value;return `<button type="button" class="choice${selected?' selected':''}" data-value="${value}" aria-pressed="${selected}" aria-label="${label}" title="${label}"><span class="choice-art">${visualChoice(value)}</span><span class="choice-label">${label}</span><span class="choice-check" aria-hidden="true">✓</span></button>`;}
 function render({focus=false,selection=false}={}){
  document.body.classList.toggle('intro-paper',state.screen==='intro'&&!parseCollectionRoute(location.hash));
  const wordmark=document.querySelector('.wordmark');wordmark.hidden=state.screen==='intro';if(state.screen==='reveal')wordmark.removeAttribute('href');else wordmark.setAttribute('href','./');wordmark.setAttribute('aria-label',state.screen==='reveal'?'GRAPHIC MONSTER':'Graphic Monster home');
@@ -82,10 +82,7 @@ function render({focus=false,selection=false}={}){
  window.dispatchEvent(new CustomEvent('graphic-monster:intro',{detail:state.screen==='intro'&&!parseCollectionRoute(location.hash)}));
  if(focus){
    copy.querySelector('h1')?.focus({preventScroll:true});
-   if(state.screen==='question'&&matchMedia('(max-width:680px)').matches){
-     const top=copy.getBoundingClientRect().top,safe=document.querySelector('#studio').getBoundingClientRect().bottom+12;
-     if(top<safe-10||top>innerHeight*.75)copy.scrollIntoView({block:'start',behavior:'instant'});
-   }
+   if(state.screen==='question'&&matchMedia('(max-width:680px)').matches)window.scrollTo({top:0,behavior:'instant'});
  }
  if(selection)copy.querySelector(`[data-value="${state.answers[QUESTIONS[state.step].key]}"]`)?.focus({preventScroll:true});
  save();
@@ -138,7 +135,7 @@ function choose(value){
  if(transitioning)return;
  const editing=complete();clearTimeout(advanceTimer);state=reducer(state,{type:'SELECT',value});const q=QUESTIONS[state.step];render({selection:true});announce(`${labelFor(q,value)} selected. ${feedback[state.step]}`);
  // Leave time for the selected material and arrangement to settle before advancing.
- advanceTimer=setTimeout(()=>{dispatch({type:editing?'REVEAL':'ADVANCE'});announce(state.screen==='reveal'?`${state.name} observed.`:`Decision ${state.step+1} of five. ${QUESTIONS[state.step].title.replace('\n',' ')}`);},reduced.matches?650:1700);
+ advanceTimer=setTimeout(()=>{dispatch({type:editing?'REVEAL':'ADVANCE'});announce(state.screen==='reveal'?`${state.name} observed.`:`Decision ${state.step+1} of five. ${QUESTIONS[state.step].title.replace('\n',' ')}`);},reduced.matches?650:2300);
 }
 function openRename(){if(state.screen==='reveal')return;clearTimeout(advanceTimer);renameFocus=document.activeElement;const input=document.querySelector('#edit-monster-name');input.value=state.name;input.setCustomValidity('');dialog.showModal();input.focus();input.select();}
 function checkName(input){const name=normalizeName(input.value);input.setCustomValidity(name?'':'Enter a name.');return input.reportValidity()?name:null;}
