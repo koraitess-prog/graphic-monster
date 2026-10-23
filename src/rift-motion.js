@@ -1,11 +1,18 @@
 import {paperGrid} from './paper-motion.js';
 const mix=(a,b,t)=>a+(b-a)*t;
 const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
-function bind(point,rest,posed){
+export function bindLimbPoint(point,rest,posed,preserveCaps=false){
  let best;
  for(let i=0;i<rest.length-1;i++){
-  const a=rest[i],b=rest[i+1],dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy)||1,t=Math.max(0,Math.min(1,((point[0]-a[0])*dx+(point[1]-a[1])*dy)/(length*length))),x=a[0]+dx*t,y=a[1]+dy*t,distance=Math.hypot(point[0]-x,point[1]-y);
-  if(!best||distance<best.distance){const c=posed[i],d=posed[i+1],ux=d[0]-c[0],uy=d[1]-c[1],len=Math.hypot(ux,uy)||1,offset=((point[0]-x)*-dy+(point[1]-y)*dx)/length;best={distance,p:[mix(c[0],d[0],t)-uy/len*offset,mix(c[1],d[1],t)+ux/len*offset]};}
+  const a=rest[i],b=rest[i+1],dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy)||1;
+  const t=Math.max(0,Math.min(1,((point[0]-a[0])*dx+(point[1]-a[1])*dy)/(length*length))),x=a[0]+dx*t,y=a[1]+dy*t,distance=Math.hypot(point[0]-x,point[1]-y);
+  if(!best||distance<best.distance){
+   const c=posed[i],d=posed[i+1],ux=d[0]-c[0],uy=d[1]-c[1],len=Math.hypot(ux,uy)||1,offset=((point[0]-x)*-dy+(point[1]-y)*dx)/length;
+   // Keep the authored paper extending beyond a joint. Legacy callers retain
+   // their original projection; the motion study opts into rigid end caps.
+   const cap=preserveCaps?((point[0]-x)*dx+(point[1]-y)*dy)/length:0;
+   best={distance,p:[mix(c[0],d[0],t)-uy/len*offset+ux/len*cap,mix(c[1],d[1],t)+ux/len*offset+uy/len*cap]};
+  }
  }
  return best.p;
 }
@@ -45,7 +52,7 @@ export function riftIdlePose(scene,t,event=0){
  };
  const part=p=>{
   const id=p.motionPart??p.id;
-  const deform=point=>global(wave&&rig&&id==='arm-right'?bind(point,rig,target):wave&&rig&&id==='hand-right'?moveHand(point):dangling(point,p));
+  const deform=point=>global(wave&&rig&&id==='arm-right'?bindLimbPoint(point,rig,target):wave&&rig&&id==='hand-right'?moveHand(point):dangling(point,p));
   const material=wave&&rig&&id==='arm-right'?paperGrid(p.points):null;
   return {...p,paperRestPoints:p.points,...(material?{paperMaterial:{...material,points:material.rest.map(deform)}}:{}),points:p.points.map(deform)};
  };
