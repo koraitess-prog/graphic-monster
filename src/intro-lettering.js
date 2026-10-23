@@ -54,12 +54,34 @@ export function drawIntroLettering(g,factory){
  });
 }
 
-let titleObserver;
+export function titleTouchPose(elapsed){
+ const t=Math.max(0,Math.min(1,elapsed/650));const strength=t<.31?Math.sin(t/.31*Math.PI/2):Math.cos((t-.31)/.69*Math.PI/2);
+ return {strength,angle:strength*.012,dx:strength*2.5,dy:-strength*2};
+}
+let titleCleanup;
 export function mountIntroLettering(title){
- titleObserver?.disconnect();
- title.dataset.paperLetters='true';title.classList.add('illustrated-title');title.setAttribute('aria-label','GRAPHIC MONSTER');
+ titleCleanup?.();title.dataset.paperLetters='true';title.classList.add('illustrated-title');title.setAttribute('aria-label','GRAPHIC MONSTER');
  const canvas=document.createElement('canvas');canvas.setAttribute('aria-hidden','true');title.replaceChildren(canvas);
  const factory=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;};
- const paint=()=>{const width=Math.round(title.clientWidth),dpr=Math.min(window.devicePixelRatio||1,2);if(!width)return;canvas.width=Math.round(width*dpr);canvas.height=Math.round(width*400/1280*dpr);const g=canvas.getContext('2d');g.scale(canvas.width/1280,canvas.height/400);drawIntroLettering(g,factory);};
- paint();titleObserver=new ResizeObserver(()=>{if(!title.isConnected){titleObserver.disconnect();return;}paint();});titleObserver.observe(title);
+ const reduced=matchMedia('(prefers-reduced-motion: reduce)'),reactions=new Map();let plate,rects=[],raf=0,lastHit=-1;
+ const render=(now=performance.now())=>{
+  if(!plate?.width||!plate?.height||!title.clientWidth)return;
+  const g=canvas.getContext('2d'),sx=canvas.width/1280,unit=1280/title.clientWidth;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,canvas.width,canvas.height);g.drawImage(plate,0,0);
+  for(const [index,begun]of reactions){const elapsed=now-begun;if(elapsed>=650){reactions.delete(index);continue;}const r=rects[index],pose=titleTouchPose(elapsed);g.clearRect((r.x-3)*sx,(r.y-3)*sx,(r.w+6)*sx,(r.h+6)*sx);g.save();g.scale(sx,sx);g.translate(r.x+r.w/2+pose.dx*unit,r.y+r.h/2+pose.dy*unit);g.rotate(pose.angle);
+   // A shallow, local paper wrinkle: bend narrow image strips without changing ink.
+   const strips=16,step=r.w/strips;
+   for(let j=0;j<strips;j++){const x=r.x+j*step,warp=Math.sin(j/strips*Math.PI*2)*pose.strength*.65*unit;g.drawImage(plate,x*sx,r.y*sx,(step+.25)*sx,r.h*sx,-r.w/2+j*step,-r.h/2+warp,step+.25,r.h);}
+   g.restore();
+  }
+  if(reactions.size&&!document.hidden)raf=requestAnimationFrame(render);else canvas.dataset.touchState='rest';
+ };
+ const paint=()=>{
+  if(!title.isConnected){titleCleanup?.();return;}const width=Math.round(title.clientWidth),dpr=Math.min(window.devicePixelRatio||1,2);if(width<16)return;
+  cancelAnimationFrame(raf);reactions.clear();canvas.width=Math.round(width*dpr);canvas.height=Math.max(2,Math.round(width*400/1280*dpr));plate=factory(canvas.width,canvas.height);const g=plate.getContext('2d');g.scale(plate.width/1280,plate.height/400);drawIntroLettering(g,factory);
+  rects=[];['GRAPHIC','MONSTER'].forEach((word,row)=>{const scale=row?1.70:1.62,gap=11,total=[...word].reduce((n,c)=>n+glyphs[c].w,0)+gap*6;let x=(1280-total*scale)/2;for(const c of word){rects.push({x:x-2,y:(row?211:13)-2,w:glyphs[c].w*scale+4,h:100*scale+4});x+=(glyphs[c].w+gap)*scale;}});render();
+ };
+ const touch=event=>{if(reduced.matches||event.pointerType==='touch')return;const b=canvas.getBoundingClientRect(),x=(event.clientX-b.left)/b.width*1280,y=(event.clientY-b.top)/b.height*400,index=rects.findIndex(r=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h);if(index===lastHit)return;lastHit=index;if(index<0)return;canvas.dataset.touchLetter=String(index);canvas.dataset.touchState='flexing';reactions.set(index,performance.now());cancelAnimationFrame(raf);render();};
+ const leave=()=>{lastHit=-1;};const motion=()=>{cancelAnimationFrame(raf);reactions.clear();render();};
+ const observer=new ResizeObserver(paint);observer.observe(title);canvas.addEventListener('pointermove',touch);canvas.addEventListener('pointerleave',leave);reduced.addEventListener('change',motion);
+ titleCleanup=()=>{cancelAnimationFrame(raf);observer.disconnect();canvas.removeEventListener('pointermove',touch);canvas.removeEventListener('pointerleave',leave);reduced.removeEventListener('change',motion);};paint();
 }

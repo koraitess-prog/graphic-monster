@@ -1,0 +1,3 @@
+# Living paper interaction brief
+
+Silent interactive site art, 600 × 760 world coordinates. Same Anidoodle seeded composition, baked print textures, cutout shapes and material-local ink as the existing creatures. Host supplies time and answers; deterministic layout functions supply positions. Maintain one central cloud. Carry language, organization, gaze, density and gesture forward. Bake actual final paper pieces and eyes; assemble these into exact final geometry before handing back to existing idle renderer. Title stays unchanged at rest; a 650ms local touch bends the existing ink plate. Reduced motion presents stable answer-dependent clouds and an immediate final pose.

@@ -9,3 +9,5 @@ Modified files: `src/anidoodle-kit.js` adapts the RNG and point sampler from `en
 The full original license is preserved in `vendor/anidoodle-LICENSE`.
 
 The evolution upgrade also applies Anidoodle's documented persistent-actor, pure-pose, closed-form spring and bake-once/composite techniques. Thirty-two seeded gouache surface swatches are baked locally with the project's original paint renderer; all creature geometry and motion remain procedural.
+
+IBM Plex Mono (local interface font): Copyright IBM Corp., SIL Open Font License 1.1. See assets/fonts/IBM-Plex-LICENSE.txt.

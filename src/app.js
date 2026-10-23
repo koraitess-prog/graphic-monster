@@ -1,3 +1,4 @@
+import {PaperFormation} from './paper-formation.js';
 import {paperPrelude} from './collage.js';
 import {QUESTIONS,generateMonster,encodeDNA,decodeDNA} from './dna.js';
 import {evolutionScene,amorphousScene} from './evolution.js';
@@ -34,9 +35,10 @@ const visualAnswers=()=>({...state.answers,...(state.rulesVersion>=6&&state.visu
 const previewScene=()=>state.screen==='intro'?(state.rulesVersion>=4?paperPrelude():amorphousScene()):state.screen==='reveal'?(records.find(r=>r.id===state.creationId)?.scene??evolutionScene(visualAnswers(),state.rulesVersion)):evolutionScene(visualAnswers(),state.rulesVersion);
 
 const view=new CreatureView(canvas,previewScene());
-function warmPaint(scene){void loadPaintTiles(scene).then(()=>{if(!app.hidden)view.renderer.draw(view.pose());});}
+const formation=new PaperFormation(view);
+function warmPaint(scene){void loadPaintTiles(scene).then(()=>{if(!app.hidden&&!formation.active&&!transitioning)view.renderer.draw(view.pose());});}
 warmPaint(previewScene());
-const stageVisibility=new IntersectionObserver(entries=>view.setVisible(entries[0].isIntersecting),{threshold:.05});stageVisibility.observe(canvas);
+const stageVisibility=new IntersectionObserver(entries=>{if(formation.active)formation.setVisible(entries[0].isIntersecting);else view.setVisible(entries[0].isIntersecting);},{threshold:.05});stageVisibility.observe(canvas);
 function save(){
  try{sessionStorage.setItem(storageKey,JSON.stringify(state));}catch{}
  if(parseCollectionRoute(location.hash))return;
@@ -73,6 +75,8 @@ function render({focus=false,selection=false}={}){
    void syncArchive(structuredClone(state));
    document.querySelector('#stage-note').textContent='';canvas.setAttribute('aria-label',`${state.name}. ${story}`);
  }
+ if(state.screen==='question'){formation.update(generateMonster(visualAnswers(),state.rulesVersion),state.answers);}
+ else if(formation.active){formation.stop();view.visible=true;}
  afterlife.hidden=state.screen!=='reveal';
  if(state.rulesVersion>=6)decoratePaperTitles(copy);
  window.dispatchEvent(new CustomEvent('graphic-monster:intro',{detail:state.screen==='intro'&&!parseCollectionRoute(location.hash)}));
@@ -98,13 +102,13 @@ window.addEventListener('resize',fitRevealName);
 reduced.addEventListener('change',()=>{if(reduced.matches)for(const animation of [...canvas.getAnimations(),...copy.getAnimations()]){try{animation.finish();}catch{}}});
 function returnToExperience(){
  history.pushState(null,'',location.pathname+location.search+(state.screen==='reveal'?`#dna=${encodeDNA(state.answers)}`:''));
- collection.close();app.hidden=false;render({focus:true});view.setVisible(true);window.scrollTo({top:0,behavior:'instant'});
+ collection.close();app.hidden=false;render({focus:true});if(state.screen!=='question')view.setVisible(true);window.scrollTo({top:0,behavior:'instant'});
 }
 async function routeCollection(){
  const route=parseCollectionRoute(location.hash);
- if(!route){collection.close();app.hidden=false;render();view.setVisible(true);return;}
+ if(!route){collection.close();app.hidden=false;render();if(state.screen!=='question')view.setVisible(true);return;}
  document.body.classList.remove('intro-paper');
- clearTimeout(advanceTimer);app.hidden=true;afterlife.hidden=true;headerName.hidden=true;view.setVisible(false);
+ clearTimeout(advanceTimer);formation.stop();app.hidden=true;afterlife.hidden=true;headerName.hidden=true;view.setVisible(false);
  document.querySelector('.header-actions [data-action="archive"]').hidden=true;
  collection.show(route,records,archiveFailure);
  if(archiveDB){try{await archiveQueue;const saved=await archiveDB.list();if(location.hash===route.hash){records=saved;collection.show(route,records,archiveFailure);}}catch{}}
@@ -115,26 +119,25 @@ async function syncArchive(snapshot){
  archiveQueue=archiveQueue.then(async()=>{if(!archiveDB)return;try{await archiveDB.save(record);}catch{archiveFailure='This creature could not be saved. Your existing collection is retained.';}});await archiveQueue;
 }
 function artRect(){const r=canvas.getBoundingClientRect(),scale=Math.min(r.width/600,r.height/760);return {x:r.left+r.width/2,y:r.top+r.height/2,scale};}
-function enterReveal(next,{focus=true}={}){
- state=next;transitioning=true;copy.querySelectorAll('button').forEach(b=>b.disabled=true);
- const remaining=view.start?Math.max(0,view.duration-(performance.now()-view.start))+60:0;
- setTimeout(async()=>{
-  if(reduced.matches||document.hidden){render({focus});window.scrollTo({top:0,behavior:'instant'});transitioning=false;return;}
-  const outgoing=copy.animate([{transform:'translateY(0)',clipPath:'inset(0 0 0 0)'},{transform:'translateY(-16px)',clipPath:'inset(0 0 100% 0)'}],{duration:220,easing:'ease-in',fill:'forwards'});let settleTimeout;await Promise.race([outgoing.finished.catch(()=>{}),new Promise(resolve=>{settleTimeout=setTimeout(resolve,360);})]);clearTimeout(settleTimeout);outgoing.cancel();
-  const before=artRect();render({focus});window.scrollTo({top:0,behavior:'instant'});const after=artRect();
-  if(!reduced.matches&&!document.hidden)canvas.animate([{transform:`translate(${before.x-after.x}px,${before.y-after.y}px) scale(${before.scale/after.scale})`},{transform:'translate(0,0) scale(1)'}],{duration:1050,easing:'cubic-bezier(.22,.72,.2,1)'});
-  if(!reduced.matches&&!document.hidden){app.classList.add('reveal-arriving');view.greet(1080);}transitioning=false;
- },remaining);
+async function enterReveal(next,{focus=true}={}){
+ const sourceState=state;transitioning=true;clearTimeout(advanceTimer);copy.querySelectorAll('button').forEach(b=>b.disabled=true);
+ const finalScene=generateMonster({...next.answers,...(next.visualSeed!==null?{seed:next.visualSeed}:{})},next.rulesVersion);
+ await formation.reveal(finalScene);
+ if(state!==sourceState||parseCollectionRoute(location.hash)){transitioning=false;return;}
+ view.visible=true;view.update(finalScene,{immediate:true});
+ const before=artRect();state=next;render({focus});window.scrollTo({top:0,behavior:'instant'});const after=artRect();
+ if(!reduced.matches&&!document.hidden)canvas.animate([{transform:`translate(${before.x-after.x}px,${before.y-after.y}px) scale(${before.scale/after.scale})`},{transform:'translate(0,0) scale(1)'}],{duration:850,easing:'cubic-bezier(.22,.72,.2,1)'});
+ view.greet(900);transitioning=false;
 }
 function dispatch(event,{focus=true,art=false}={}){
  clearTimeout(advanceTimer);const previous=state.screen,next=reducer(state,event);
- if(previous==='question'&&next.screen==='reveal'&&!reduced.matches){enterReveal(next,{focus});return;}
- state=next;render({focus});if(previous!=='reveal'&&state.screen==='reveal')window.scrollTo({top:0,behavior:'instant'});if(art){const scene=previewScene();view.update(scene,{immediate:state.screen==='intro'});warmPaint(scene);}
+ if(previous==='question'&&next.screen==='reveal'){enterReveal(next,{focus});return;}
+ state=next;render({focus});if(previous!=='reveal'&&state.screen==='reveal')window.scrollTo({top:0,behavior:'instant'});if(art&&state.screen!=='question'){const scene=previewScene();view.update(scene,{immediate:state.screen==='intro'});warmPaint(scene);}
 }
 function choose(value){
  if(transitioning)return;
- const editing=complete();clearTimeout(advanceTimer);state=reducer(state,{type:'SELECT',value});const q=QUESTIONS[state.step];render({selection:true});view.update(evolutionScene(visualAnswers(),state.rulesVersion));warmPaint(evolutionScene(visualAnswers(),state.rulesVersion));announce(`${labelFor(q,value)} selected. ${feedback[state.step]}`);
- // Keep the existing 780ms morph; leave a short, quiet beat to see its settled shape.
+ const editing=complete();clearTimeout(advanceTimer);state=reducer(state,{type:'SELECT',value});const q=QUESTIONS[state.step];render({selection:true});announce(`${labelFor(q,value)} selected. ${feedback[state.step]}`);
+ // Leave time for the selected material and arrangement to settle before advancing.
  advanceTimer=setTimeout(()=>{dispatch({type:editing?'REVEAL':'ADVANCE'});announce(state.screen==='reveal'?`${state.name} observed.`:`Decision ${state.step+1} of five. ${QUESTIONS[state.step].title.replace('\n',' ')}`);},reduced.matches?650:1700);
 }
 function openRename(){if(state.screen==='reveal')return;clearTimeout(advanceTimer);renameFocus=document.activeElement;const input=document.querySelector('#edit-monster-name');input.value=state.name;input.setCustomValidity('');dialog.showModal();input.focus();input.select();}

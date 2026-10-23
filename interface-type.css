@@ -1,0 +1,26 @@
+@font-face{font-family:'IBM Plex Mono';src:url('./assets/fonts/IBMPlexMono-Regular.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+:root{--type-interface:'IBM Plex Mono',monospace;--type-display:Georgia,'Times New Roman',serif;--size-meta:12px;--size-control:13px;--size-body:14px}
+body{font-family:var(--type-interface);font-size:var(--size-body);line-height:1.6}
+/* Display art and editorial headings keep their separate typography. */
+h1,h2,h3,h4,.wordmark{font-family:var(--type-display)}
+body :is(p,button,input,select,textarea,label,figcaption,dt,dd,.counter,.header-name,.studio-foot,.decision-status,.choice-label,.dimension,.collection-count,.dossier-number,.answer-list,.answer-list small,.specimen-seed,.family-heading>span,#result-count){font-family:var(--type-interface)}
+body :is(p,.personality,.question-hint,.answer-list,.full-story p){font-size:var(--size-body);line-height:1.65}
+body :is(button,select,label,.header-actions>a,.atlas-header>a:last-child,.header-name,.choice-label){font-size:var(--size-control)}
+body :is(.counter,.studio-foot,.specimen-seed,.answer-list small,.collection-count,.dossier-number,.family-heading>span,.intro-caption,#result-count){font-size:var(--size-meta);line-height:1.6}
+body .header-name:after{font-family:var(--type-interface)}
+body .name-form input,body #rename-form input,.intro-paper .screen-intro .name-form input{font:400 16px/1.6 var(--type-interface)}
+body .name-form input::placeholder,body #rename-form input::placeholder{font:inherit}
+.intro-paper .intro-caption{font:400 12px/1.6 var(--type-interface)}
+body .text-button,body .primary,body .select-creature{font-family:var(--type-interface);font-size:13px}
+body .name-submit{font-size:26px}
+body .collection-card p,body .atlas-note p{font:400 13px/1.6 var(--type-interface)}
+@media(max-width:680px){body :is(p,.personality,.question-hint,.answer-list){font-size:13px}body .answer-list small{font-size:11px}}
+
+body .header-actions>a,body .atlas-header>a:last-child{font-family:var(--type-interface)}
+
+body .habitat-label{font:400 13px/1.5 var(--type-interface)}
+body .specimen-number,body .dossier-identity li{font:400 12px/1.6 var(--type-interface)}
+body .dossier-story{font:400 14px/1.65 var(--type-interface)}
+
+/* Functional overrides must also beat the older, highly specific font shorthands. */
+body :is(p,button,input,select,textarea,label,figcaption,dt,dd,small,.text-button,.counter,.header-name,.studio-foot,.decision-status,.choice-label,.dimension,.collection-count,.dossier-number,.answer-list,.specimen-seed,.habitat-label,.specimen-number,.dossier-identity li,.intro-caption){font-family:var(--type-interface)!important}
