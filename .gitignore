@@ -1,0 +1,10 @@
+# Local QA renders and generated reports
+node_modules/
+qa/**/*.png
+qa/**/*.jpg
+qa/**/*.jpeg
+qa/**/*.gif
+qa/**/*.json
+qa/**/*.txt
+*.log
+.DS_Store

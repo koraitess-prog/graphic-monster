@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GRAPHIC MONSTER — Collection QA</title><link rel="stylesheet" href="../../style.css"><body><main class="afterlife"><h1>Collection stress fixture</h1><p id="result" role="status">Preparing 80 scene snapshots in a separate test database…</p><div class="archive-grid" id="fixture"></div></main><script type="module">
+import {combinations,QUESTIONS} from '../../src/dna.js';
+import {initialState,reducer} from '../../src/state.js';
+import {makeRecord,openArchive} from '../../src/archive.js';
+import {LivingArchive} from '../../src/archive-gallery.js';
+import {loadPaintTiles} from '../../src/paint-cache.js';
+await loadPaintTiles();const db=await openArchive('graphic-monster-archive-qa-only'),names=['Long-legged visitor','Murmur','Moss','Oddo','Tilly'];
+for(const [i,answers]of combinations().entries()){
+ let state=reducer(initialState(),{type:'START',name:names[i%5]+' '+(i+1),seed:i+1,id:'fixture-'+i,createdAt:i+1});for(const q of QUESTIONS){state=reducer(state,{type:'SELECT',value:answers[q.key]});state=reducer(state,{type:'ADVANCE'});}await db.save(makeRecord(state));
+}
+const records=await db.list();if(records.length!==80)throw new Error('Archive duplicate or loss');
+// Repeat writes and reopen to exercise real IndexedDB deduplication and restore.
+await db.save(records[0]);const reopened=await openArchive('graphic-monster-archive-qa-only'),restored=await reopened.list();if(restored.length!==80)throw new Error('Duplicate after reload');
+const root=document.querySelector('#fixture');root.innerHTML=restored.map((r,i)=>`<figure class="specimen" data-specimen="${i}"><canvas width="1" height="1" role="img" aria-label="${r.name}"></canvas><figcaption>${r.name}</figcaption></figure>`).join('');
+const gallery=new LivingArchive(root,restored);
+document.querySelector('#result').textContent='80 snapshots saved, reopened and deduplicated. Product archive untouched.';
+</script></body></html>

@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Living collection QA</title><link rel="stylesheet" href="../../style.css"><body><header class="site-header"><a class="wordmark" href="../../">GRAPHIC MONSTER</a><nav id="sizes" aria-label="Fixture size"><button>0</button><button>1</button><button>6</button><button>12</button><button>30</button></nav></header><p id="result" role="status" style="padding:0 64px;font:12px monospace"></p><main id="collection-screen" class="collection-screen"></main><script type="module">
+import {combinations,QUESTIONS} from '../../src/dna.js';
+import {initialState,reducer} from '../../src/state.js';
+import {makeRecord,openArchive} from '../../src/archive.js';
+import {CollectionScreen,parseCollectionRoute} from '../../src/collection-screen.js';
+import {loadPaintTiles} from '../../src/paint-cache.js';
+await loadPaintTiles();const db=await openArchive('graphic-monster-living-qa-only');
+const names=['Juniper','Moss','Tilly','Rill','Sol','Murmur'];
+for(const [i,answers] of combinations().slice(0,30).entries()){
+ let state=reducer(initialState(),{type:'START',name:names[i%6]+' '+(i+1),seed:i+1,id:'living-fixture-'+i,createdAt:i+1});
+ for(const q of QUESTIONS){state=reducer(state,{type:'SELECT',value:answers[q.key]});state=reducer(state,{type:'ADVANCE'});}await db.save(makeRecord(state));
+}
+const saved=await db.list();await db.save(saved[0]);const reopened=await openArchive('graphic-monster-living-qa-only'),records=await reopened.list();if(records.length!==30)throw new Error('Persistence/deduplication failed');
+let count=Number(new URL(location.href).searchParams.get('count')??1);
+const screen=new CollectionScreen(document.querySelector('#collection-screen'),{open:id=>location.hash=id?'creature='+encodeURIComponent(id):'archive',back:()=>location.hash='archive',create:()=>location.href='../../'});
+function render(){screen.show(parseCollectionRoute(location.hash)||{type:'archive',hash:'#archive'},records.slice(0,count));document.querySelector('#result').textContent=`${count} visible records · 30 persisted without duplicates · isolated test database`;}
+document.querySelector('#sizes').addEventListener('click',e=>{if(e.target.tagName==='BUTTON'){count=Number(e.target.textContent);history.replaceState(null,'',`?count=${count}#archive`);render();}});window.addEventListener('hashchange',render);render();
+</script></body></html>

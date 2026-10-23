@@ -1,0 +1,33 @@
+// Real Canvas host under a deterministic browser clock: no headless browser needed.
+import {createRequire} from 'node:module';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import {generateMonster,decodeDNA} from '../src/dna.js';
+import {CreatureView} from '../src/renderer.js';
+const require=createRequire(path.join(path.resolve(process.argv[2]),'qa-loader.cjs'));
+const {createCanvas,Path2D}=require('@napi-rs/canvas');globalThis.Path2D=Path2D;
+let clock=1,next=0,frames=0;const pending=new Map(),timers=new Map(),listeners=new Map();
+const media={matches:false,addEventListener:(_,fn)=>listeners.set('media',fn),removeEventListener:()=>listeners.delete('media')};
+globalThis.matchMedia=()=>media;
+Object.defineProperty(globalThis,'performance',{value:{now:()=>clock},configurable:true});
+globalThis.requestAnimationFrame=fn=>{pending.set(++next,fn);return next;};
+globalThis.cancelAnimationFrame=id=>pending.delete(id);
+globalThis.setTimeout=(fn,delay)=>{timers.set(++next,{fn,delay});return next;};
+globalThis.clearTimeout=id=>timers.delete(id);
+globalThis.document={hidden:false,createElement:()=>createCanvas(1,1),addEventListener:(key,fn)=>listeners.set(key,fn),removeEventListener:key=>listeners.delete(key)};
+const canvas=createCanvas(1,1),attrs=new Map();canvas.setAttribute=(k,v)=>attrs.set(k,v);
+const a=generateMonster(decodeDNA('00000')),b=generateMonster(decodeDNA('31011')),c=generateMonster(decodeDNA('21101'));
+const view=new CreatureView(canvas,a),frameTimes=[];
+function tick(delta=50){clock+=delta;const jobs=[...pending.values()];pending.clear();for(const fn of jobs){const start=process.hrtime.bigint();fn(clock);frameTimes.push(Number(process.hrtime.bigint()-start)/1e6);frames++;}}
+assert.equal(pending.size,0);assert.equal(timers.size,1,'quiet interval schedules one wakeup');
+view.update(b);assert.equal(timers.size,0,'transformation suspends idle');assert.equal(attrs.get('aria-busy'),'true');for(let i=0;i<8;i++)tick();
+const current=view.pose(clock);view.update(c);assert.deepEqual(view.from,current,'interruption starts from the visible pose');
+for(let i=0;i<25;i++)tick();assert.deepEqual(view.scene,c);assert.equal(attrs.get('aria-busy'),'false');assert.equal(pending.size,0);assert.equal(timers.size,1);
+const wake=[...timers.values()][0];timers.clear();clock+=wake.delay;wake.fn();tick(300);assert.equal(view.idle,true);assert.notDeepEqual(view.scene,c);
+const idle=view.scene;view.update(b);assert.deepEqual(view.from,idle,'a morph continues from the currently visible idle pose');assert.equal(view.idle,false);
+document.hidden=true;listeners.get('visibilitychange')();assert.equal(pending.size,0);assert.equal(timers.size,0);assert.deepEqual(view.scene,b);
+document.hidden=false;listeners.get('visibilitychange')();assert.equal(timers.size,1);
+media.matches=true;listeners.get('media')();assert.equal(timers.size,0);view.update(a);assert.deepEqual(view.scene,a);assert.equal(pending.size,0);
+media.matches=false;listeners.get('media')();assert.equal(timers.size,1);view.update(b);tick();media.matches=true;listeners.get('media')();assert.deepEqual(view.scene,b);assert.equal(pending.size,0);
+view.destroy();assert.equal(timers.size,0);assert.equal(listeners.size,0);
+frameTimes.sort((a,b)=>a-b);console.log(JSON.stringify({frames,interruption:'pass',idleInterruption:'pass',quietIntervals:'pass',hiddenTab:'pass',reducedMotion:'pass',preferenceChange:'pass',cleanup:'pass',nativeFrameMedianMs:+frameTimes[Math.floor(frameTimes.length*.5)].toFixed(2),paintSwatches:view.renderer.patterns.size},null,2));

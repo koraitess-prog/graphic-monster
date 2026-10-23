@@ -1,0 +1,6 @@
+/** Adapted from Anidoodle 0.9.4 by Alex Greenshpun / 10x Company, Apache-2.0.
+ * core.ts: rng, sample. midCentury.ts: variable-radius limb geometry.
+ * See vendor/anidoodle-LICENSE and NOTICE.md. */
+export const rng=seed=>{let a=seed>>>0;return()=>{a=(a+0x6d2b79f5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};};
+export function sample(pts,closed=false,per=10){const n=pts.length,at=i=>closed?pts[((i%n)+n)%n]:pts[Math.max(0,Math.min(n-1,i))],out=[];for(let i=0;i<(closed?n:n-1);i++){const [p0,p1,p2,p3]=[at(i-1),at(i),at(i+1),at(i+2)];for(let k=0;k<per;k++){const t=k/per,t2=t*t,t3=t2*t;out.push([0,1].map(d=>.5*(2*p1[d]+(-p0[d]+p2[d])*t+(2*p0[d]-5*p1[d]+4*p2[d]-p3[d])*t2+(-p0[d]+3*p1[d]-3*p2[d]+p3[d])*t3)));}}out.push(closed?out[0]:pts[n-1]);return out;}
+export function limb(center,radii){const s=sample(center,false,12),a=[],b=[];s.forEach((p,i)=>{const t=i/(s.length-1),seg=Math.min(radii.length-2,Math.floor(t*(radii.length-1))),f=t*(radii.length-1)-seg,rr=radii[seg]+(radii[seg+1]-radii[seg])*f,q=s[Math.min(s.length-1,i+1)],o=s[Math.max(0,i-1)],dx=q[0]-o[0],dy=q[1]-o[1],len=Math.hypot(dx,dy)||1;a.push([p[0]-dy/len*rr,p[1]+dx/len*rr]);b.push([p[0]+dy/len*rr,p[1]-dx/len*rr]);});return[...a,...b.reverse()];}
