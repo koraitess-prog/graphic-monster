@@ -27,10 +27,10 @@ export async function playRevealFlight({view,app,reduced,signal,papers}){
    if(signal.aborted){finish(false);return;}
    const elapsed=now-started,beat=arrivalBeat(elapsed,gesture,gestureDuration);
    app.dataset.revealPhase=beat.phase;
-   papers?.flight(elapsed,beat);
    studio.style.transform=`translateY(${beat.drop*distance}px) rotate(${beat.tilt*tiltDirection}deg)`;
    studio.style.transformOrigin='50% 86%';shadow.style.opacity=String(beat.shadow*.72);
    window.scrollTo({top:beat.camera*distance,behavior:'instant'});
+   papers?.flight(elapsed,beat,window.scrollY);
    if(now-lastPaint>=32){view.renderer.draw(arrivalPose(scene,beat,elapsed));lastPaint=now;}
    if(elapsed<duration)raf=requestAnimationFrame(frame);else finish(true);
   };raf=requestAnimationFrame(frame);

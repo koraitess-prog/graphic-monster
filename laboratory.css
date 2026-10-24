@@ -1,0 +1,129 @@
+/* Quiet field, active material. All creature artwork stays in the existing renderer. */
+:root{--lab-line:#414a46;--lab-muted:#a4afa5}
+body{background:#202426}
+body .site-header{height:60px;max-width:1320px;margin:auto;padding:0 32px;border:0}
+body .wordmark{font-size:10px;letter-spacing:.06em}
+body .header-actions .text-button{font-size:11px}
+body.monster-reveal .site-header{display:flex}
+.lab-meta{font-size:10px;line-height:1.7;letter-spacing:.08em;color:var(--lab-muted)}
+button:focus-visible,summary:focus-visible,input:focus-visible{outline:1px solid #e8ddba;outline-offset:5px}
+body.intro-paper .screen-intro{min-height:100svh;padding:6svh 6vw 5svh;display:flex;justify-content:center}
+body.intro-paper .screen-intro .copy{width:min(100%,1120px);max-width:1120px;padding:0}
+body.intro-paper .screen-intro .name-form{display:flex;align-items:center;gap:24px;width:min(380px,90%);max-width:none;margin:38px auto 0}
+body.intro-paper .screen-intro .name-form input{flex:1;text-align:left;min-width:0;width:100%;border-bottom:1px solid var(--lab-line);font-size:14px!important}
+body.intro-paper .screen-intro .name-form input:focus-visible{outline:1px solid #e8ddba;outline-offset:4px}
+.lab-entry{background:transparent;color:#e8ddba;border:1px solid #70796c;padding:12px 20px;min-height:44px;font-size:12px}
+.lab-entry:hover{background:#e8ddba;color:#202426}
+body .intro-index{display:block;margin:22px auto 0;font-size:10px;color:var(--lab-muted)}
+body.question-paper .site-header{max-width:1200px;height:52px}
+body .screen-question:not(.reveal-air){grid-template-rows:minmax(230px,1fr) auto auto;padding-bottom:20px;gap:0}
+#material-step{position:absolute;top:12px;left:0;z-index:2}
+body .screen-question:not(.reveal-air) .canvas-wrap{height:clamp(250px,52svh,510px)}
+.material-record{display:flex;align-items:center;justify-content:center;gap:12px;padding:12px 0;grid-row:3;grid-column:1;min-height:48px}
+.material-record[hidden]{display:none}
+.material-sample{width:36px;height:25px;display:grid;place-items:center;border-bottom:1px solid var(--lab-line);color:#7f8b81;font-size:9px}
+.material-sample canvas{width:38px;height:25px;object-fit:cover}
+.material-sample.retained{border-color:#b5b7a2}
+body .screen-question .choice:hover .choice-art,body .screen-question .choice:focus-visible .choice-art{transform:translateY(-5px)}
+body .screen-question .vortex-near #monster{transform:scale(1.06)}
+.culture-assembling .choices{opacity:0;pointer-events:none;transition:opacity .3s}
+.culture-assembling .observation-identity,.culture-assembling .observation-toolbar,.culture-assembling .poster-actions{opacity:0;pointer-events:none}
+/* Reveal and archive use the same scale and quiet identity. */
+body .screen-reveal{display:grid;grid-template-columns:1fr;grid-template-rows:minmax(360px,1fr) auto auto;position:relative;isolation:auto;width:min(1100px,100%);max-width:1100px;height:auto;min-height:calc(100svh - 60px);padding:0 32px 24px;margin:auto;overflow:visible}
+body .screen-reveal .studio{position:relative;inset:auto;grid-column:1;grid-row:1;min-height:0;height:auto;width:100%;margin:0;padding:0;pointer-events:auto;background:transparent;z-index:1;align-self:stretch}
+body .screen-reveal .canvas-wrap{height:clamp(380px,69svh,760px);width:100%;max-width:640px;margin:auto}
+body .screen-reveal #monster{object-fit:contain;transform:none;pointer-events:auto}
+body .screen-reveal .copy{display:contents;position:static;inset:auto;pointer-events:auto;max-width:none;height:auto}
+.observation-identity{position:absolute;left:32px;top:20px;z-index:2;pointer-events:none}
+body .screen-reveal .reveal-name{position:static;inset:auto;margin:9px 0 0;max-width:220px;font-size:22px!important;letter-spacing:0;line-height:1.3}
+body .screen-reveal .reveal-name.creature-lettering{width:auto;max-width:220px;font-size:22px!important}
+body .screen-reveal .reveal-name canvas{max-width:220px;max-height:48px}
+.observation-toolbar{display:flex;align-items:center;justify-content:space-between;gap:20px;border-top:1px solid var(--lab-line);min-height:60px;color:var(--lab-muted);position:relative;z-index:3}
+.observation-toolbar>div{display:flex;gap:24px;align-items:center}
+body .observation-toolbar .text-button{font-size:10px;color:#c3cbbd;white-space:nowrap}
+.observation-log{font-size:10px;line-height:1.6}
+body .screen-reveal .observation-toolbar{grid-row:2;grid-column:1}
+body .screen-reveal .poster-actions{position:static;inset:auto;grid-column:1;grid-row:3;display:flex;flex-direction:row;justify-content:flex-end;gap:24px;width:auto;padding:0;align-items:center;margin:0}
+body .screen-reveal .poster-actions .text-button{font-size:11px}
+body .screen-reveal .material-record{position:absolute;left:32px;bottom:29px;gap:8px;padding:0;min-height:0;z-index:2}
+body .screen-reveal .material-sample{width:22px;height:16px}
+body .screen-reveal .material-sample canvas{width:25px;height:18px}
+.observation-stimulus{position:absolute;width:12px;height:8px;background:#d7cba6;clip-path:polygon(3% 12%,92% 0,100% 80%,6% 100%);opacity:0;pointer-events:none;z-index:3;transition:opacity .5s}
+.observation-stimulus.present{opacity:.8}
+body .afterlife{max-width:1100px;margin:auto;padding:0 32px 60px}
+body .full-story{display:block;margin:0;max-width:none}
+body.monster-reveal .full-story{max-width:none;margin:0;text-align:left}
+body.monster-reveal .afterlife{padding:0 32px 60px}
+.field-notes{font-size:11px;color:var(--lab-muted);max-width:600px}
+.field-notes summary{cursor:pointer;min-height:44px;display:list-item;list-style-position:inside;padding:10px 0}
+body .field-notes p,body .field-notes .personality{font-size:12px;line-height:1.9;margin:12px 0 20px;max-width:550px;color:#bec5b7}
+/* A single observed specimen, with a separate navigable collection. */
+body.archive-page .collection-screen{max-width:1200px;margin:auto;padding:20px 32px 45px;min-height:100svh}
+.lab-archive-header{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:58px;border-bottom:1px solid var(--lab-line)}
+.lab-archive-header h1{font-size:12px;font-weight:400;letter-spacing:.04em;margin:0}
+body .lab-new{font-size:11px;color:#e8ddba;border-bottom:1px solid #8d967f;padding:8px 0;min-height:44px}
+.archive-observation{display:flex;flex-direction:column}
+.specimen-focus{display:contents}
+.observation-field{position:relative;height:clamp(360px,60svh,650px);min-width:0;order:0}
+.observation-field canvas{display:block;width:100%;height:100%;object-fit:contain}
+.specimen-identity{position:absolute;top:22px;left:0;z-index:2;pointer-events:none;max-width:220px}
+.specimen-identity h2{font-size:14px;font-weight:400;line-height:1.5;margin:8px 0;overflow-wrap:anywhere}
+.archive-observation>.specimen-focus>.observation-toolbar{order:1}
+.archive-observation>.specimen-focus>.field-notes{order:3}
+.specimen-strip{display:flex;gap:16px;overflow-x:auto;overscroll-behavior-x:contain;padding:15px 3px 18px;scrollbar-width:thin;scrollbar-color:#697464 transparent;order:2}
+body .specimen-strip .habitat{flex:0 0 105px;min-width:0;padding:0;border:0;border-bottom:1px solid var(--lab-line);background:transparent;opacity:.55;transition:opacity .2s}
+body .specimen-strip .habitat[aria-pressed=true],body .specimen-strip .habitat:hover,body .specimen-strip .habitat:focus-visible{opacity:1;border-bottom-color:#d8d1b8}
+body .specimen-strip .habitat-room{height:110px;aspect-ratio:auto;display:block;background:none}
+body .specimen-strip .habitat canvas{height:100%;width:100%;padding:0;object-fit:contain}
+body .specimen-strip .habitat-room:after,body .specimen-strip .habitat-open{display:none}
+body .specimen-strip .habitat-label{padding:8px 0;gap:6px;align-items:center}
+body .specimen-strip .habitat-label>span:first-child{font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body .specimen-strip .specimen-number{font-size:8px}
+body .creature-dossier{display:flex;flex-direction:column;gap:0;align-items:stretch;max-width:1050px;margin:auto}
+body .creature-dossier .dossier-art{width:100%;height:clamp(360px,65svh,720px);min-height:0}
+body .dossier-copy{display:block;max-width:600px;padding:30px 0;order:3}
+body .creature-dossier .observation-toolbar{order:2}
+body .creature-dossier .dossier-art{order:1}
+body .dossier-copy h1,body .dossier-copy h1.creature-lettering{font-size:24px;max-width:280px}
+body .dossier-copy .dossier-eyebrow{display:none}
+body .dossier-identity{margin-top:24px}
+body .dossier-identity h2{font-size:11px;font-weight:400}
+body .dossier-identity ul{display:flex;flex-wrap:wrap;gap:14px;list-style:none;padding:0}
+body .dossier-identity li{font-size:10px}
+body .dossier-identity .trait-symbol{display:none}
+@media(max-width:680px){
+ body .site-header{height:50px;padding:0 20px}
+ body.intro-paper .screen-intro{padding:9svh 5vw 6svh}
+ body.intro-paper .screen-intro .name-form{gap:18px;margin-top:35px}
+ body .screen-question:not(.reveal-air){grid-template-rows:minmax(200px,1fr) auto auto;min-height:calc(100svh - 44px);padding:0 18px max(14px,env(safe-area-inset-bottom))}
+ body .screen-question:not(.reveal-air) .canvas-wrap{height:clamp(220px,43svh,360px)}
+ #material-step{top:8px;font-size:8px}
+ body .screen-question:not(.reveal-air) .choices.five{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:auto;min-height:128px;gap:4px;padding:6px 0 12px}
+ body .screen-question:not(.reveal-air) .five .choice,body .screen-question:not(.reveal-air) .five .choice:nth-child(-n+2),body .screen-question:not(.reveal-air) .five .choice:last-child{grid-column:auto;width:100%;min-height:100px;height:110px}
+ body .screen-question:not(.reveal-air) .choices.two{grid-template-rows:130px;min-height:140px;gap:20px}
+ body .screen-question:not(.reveal-air) .choices.two .choice{height:130px}
+ .material-record{padding:6px 0}
+ body .screen-reveal{min-height:calc(100svh - 50px);padding:0 20px 20px;grid-template-rows:minmax(330px,1fr) auto auto}
+ body .screen-reveal .studio{height:auto;inset:auto;min-height:0}
+ body .screen-reveal .canvas-wrap{height:clamp(350px,65svh,620px);padding-top:35px}
+ .observation-identity{left:20px;top:12px}
+ body .screen-reveal .reveal-name{font-size:18px!important;max-width:150px}
+ .observation-toolbar{gap:10px;min-height:65px;align-items:center}
+ .observation-toolbar>div{gap:14px}
+ .observation-log{font-size:8px;max-width:110px}
+ body .observation-toolbar .text-button{font-size:9px}
+ body .screen-reveal .poster-actions{gap:18px;padding-top:24px}
+ body .screen-reveal .material-record{left:20px;bottom:37px;gap:3px}
+ body .screen-reveal .material-sample{width:15px}
+ body .screen-reveal .material-sample canvas{width:18px}
+ body .afterlife{padding:0 20px 40px}
+ body.monster-reveal .afterlife{padding:0 20px 40px}
+ body.archive-page .collection-screen{padding:10px 20px 35px}
+ .observation-field{height:clamp(340px,56svh,560px);padding-top:45px}
+ .specimen-identity{top:12px}
+ .specimen-identity h2{font-size:12px}
+ body .specimen-strip .habitat{flex-basis:82px}
+ body .specimen-strip .habitat-room{height:86px}
+ .specimen-strip{gap:12px}
+}
+@media(prefers-reduced-motion:reduce){.observation-stimulus,.culture-assembling .choices{transition:none}body .screen-question .choice:hover .choice-art{transform:none}}

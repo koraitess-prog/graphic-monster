@@ -86,7 +86,7 @@ export class PaperFormation{
  stamp(g,p,pos,scale){g.save();g.translate(pos.x,pos.y);g.rotate(pos.angle??0);g.scale(scale,scale);g.drawImage(p.image,-p.w/2,-p.h/2,p.w,p.h);g.restore();}
  draw(now){
   const g=this.renderer.ctx;this.renderer.resize(1.5);g.setTransform(1.5,0,0,1.5,0,0);g.clearRect(0,0,600,760);g.fillStyle=this.renderer.background;g.fillRect(0,0,600,760);
-  const camera=this.canvas.clientWidth<450?1.4:1.05;g.translate(300,362);g.scale(camera,camera);g.translate(-300,-362);
+  const camera=this.canvas.dataset.paperWorkbench==='true'?Math.min(1.05,this.canvas.clientHeight/Math.max(1,this.canvas.clientWidth)*1.3):this.canvas.clientWidth<450?1.4:1.05;g.translate(300,362);g.scale(camera,camera);g.translate(-300,-362);
   const parts=this.visibleParts(),time=this.reduced.matches?0:(now-this.begun)/1000,traits=cloudTraits(this.answers);
   // One compatible eye, briefly visible between back and front layers. The
   // source is the actual future eye, never an invented facial configuration.

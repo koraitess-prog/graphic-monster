@@ -1,4 +1,4 @@
-import {registerPaintTiles} from './renderer.js?v=arrival1';
+import {registerPaintTiles} from './renderer.js?v=laboratory1';
 const pending=new Map();let manifest;
 function bounded(promise,ms){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Paint download timed out')),ms);})]).finally(()=>clearTimeout(timer));}
 export function scenePaintKeys(scene){

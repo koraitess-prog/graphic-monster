@@ -254,6 +254,10 @@ export class CreatureView{
  }
  setVisible(visible){if(this.visible===visible)return;this.visible=visible;if(!visible)this.finish();else this.schedule();}
  greet(delay=0){if(supportsFamilyMotion(this.target)){this.familyRequested={action:signatureAction(this.target,this.event),at:performance.now()+delay};this.animateFamily();return;}clearTimeout(this.timer);if(this.visible&&!this.motion.matches&&!document.hidden&&!this.start)this.timer=setTimeout(()=>this.animateIdle(),delay);}
+ react(action,{delay=0,direction=1}={}){
+   if(!supportsFamilyMotion(this.target)||!this.visible||this.motion.matches||document.hidden||this.start||this.familyAction||this.familyRequested)return false;
+   const at=performance.now()+delay;this.familyRequested={action,at,direction};this.familyDue=Math.max(this.familyDue??0,at+1);this.animateFamily();return true;
+ }
  schedule(){
    clearTimeout(this.timer);if(!this.visible||this.motion.matches||document.hidden||this.start)return;
    if(supportsFamilyMotion(this.target)){this.timer=setTimeout(()=>this.animateFamily(),0);return;}
@@ -276,10 +280,10 @@ export class CreatureView{
    const frame=now=>{
     if(!this.familyLoop||!this.visible||this.motion.matches||document.hidden)return;
     if(!this.familyAction&&((this.familyRequested&&now>=this.familyRequested.at)||now>=this.familyDue)){
-     const action=this.familyRequested?.action??signatureAction(this.target,this.event);this.familyRequested=null;this.familyAction={action,start:now,duration:p[action+'Duration']*1000};
+     const action=this.familyRequested?.action??this.behaviorSelector?.(this.target,this.event)??signatureAction(this.target,this.event),direction=this.familyRequested?.direction??1;this.familyRequested=null;this.familyAction={action,start:now,duration:(p[action+'Duration']??4)*1000,direction};this.onBehavior?.(action);
     }
     if(now-last>=33){const current=this.familyAction,t=current?Math.min(1,(now-current.start)/current.duration):0;
-     this.scene=familyPose(this.target,current?.action??'breathe',t,(now-this.familyEpoch)/1000);this.renderer.draw(this.scene);this.renderer.canvas.dataset.familyAction=current?.action??'breathe';last=now;
+     this.scene=familyPose(this.target,current?.action??'breathe',t,(now-this.familyEpoch)/1000,current?.direction??1);this.renderer.draw(this.scene);this.renderer.canvas.dataset.familyAction=current?.action??'breathe';last=now;
      if(current&&t>=1){this.familyAction=null;this.familyDue=now+p.pause;this.event++;}
     }
     this.raf=requestAnimationFrame(frame);

@@ -2,7 +2,7 @@
 
 Silent interactive paper theatre in the existing illustrated house style. Keep saved scenes and anatomy unchanged; use the approved family rigs for the physical reaction.
 
-Frame reference: after the burst reaches the edges, scraps stay fixed in viewport coordinates. No camera offset or parallax is applied to them; only the creature and loose name letters travel during the fall.
+Frame reference: after the burst reaches the edges, scraps stay anchored to the original upper page. Rendering subtracts the actual browser scroll from those coordinates, so they leave above the viewport as the camera follows the falling creature into the lower screen. They are not a fixed overlay travelling along with the camera. Name letters continue travelling with the creature.
 
 User direction: all untextured UI text in IBM Mono; a much smaller creature name; answers commit immediately and advance without Next or revision controls. The creature assembles in the air, falls while the page follows, gets up, performs, then its description appears.
 

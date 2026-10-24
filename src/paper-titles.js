@@ -3,7 +3,7 @@ import {mountCreatureName} from './creature-lettering.js?v=arrival1';
 import {mountLivingTitle} from './living-title.js';
 const stocks=['#e6ddc5','#c9bb9b','#d6a333','#dcd3bc','#b7a4b8','#e6ddc5'];
 export function decoratePaperTitles(root=document,{scene}={}){
- for(const title of root.querySelectorAll('h1:not([data-paper-letters])')){
+ for(const title of root.querySelectorAll('h1:not([data-paper-letters]):not(.sr-only)')){
   if(title.querySelector('canvas'))continue;
   if(title.matches('.archive-create-heading')){const lettering=title.querySelector('.archive-create-lettering');mountCreatureName(lettering,{align:'center'});mountLivingTitle(lettering);title.dataset.paperLetters='true';continue;}
   if(title.matches('.reveal-name,.dossier-copy h1')){mountCreatureName(title,{scene});continue;}

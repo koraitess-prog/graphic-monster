@@ -1,6 +1,6 @@
 import {supportsFamilyMotion,familyPose,familyProfile,signatureAction} from './family-motion.js';
-import {loadPaintTiles} from './paint-cache.js?v=arrival1';
-import {MonsterRenderer} from './renderer.js?v=arrival1';
+import {loadPaintTiles} from './paint-cache.js?v=laboratory1';
+import {MonsterRenderer} from './renderer.js?v=laboratory1';
 import {idlePose,motionProfile} from './motion.js';
 // One scheduler for the visible collection. Offscreen windows release their pixel
 // buffers. Pigment images are shared globally by the existing renderer.

@@ -1,31 +1,30 @@
-import {PaperFormation} from './paper-formation.js';
+import {PaperFormation} from './paper-formation.js?v=workbench1';
 import {paperPrelude} from './collage.js';
 import {QUESTIONS,generateMonster,encodeDNA,decodeDNA} from './dna.js';
 import {evolutionScene,amorphousScene} from './evolution.js';
-import {CreatureView} from './renderer.js?v=arrival1';
+import {CreatureView} from './renderer.js?v=laboratory1';
 import {initialState,reducer,restoreState,normalizeName} from './state.js';
-import {visualChoice} from './samples.js';
-import {loadPaintTiles} from './paint-cache.js?v=arrival1';
+import {loadPaintTiles} from './paint-cache.js?v=laboratory1';
 import {displayFamily} from './typography.js';
 import {drawWordmark} from './wordmark.js';
 import {openArchive,makeRecord,mergeRecord} from './archive.js?v=arrival1';
 import {SharedArchive,combineArchives} from './shared-archive.js';
 import {archiveConfig} from './archive-config.js';
-import {CollectionScreen,parseCollectionRoute} from './collection-screen.js?v=arrival1';
-import {decoratePaperTitles} from './paper-titles.js?v=arrival1';
-import {playRevealFlight} from './reveal-flight.js?v=paperfall2';
-import {familyProfile} from './family-motion.js';
-import {createRevealPapers} from './reveal-papers.js?v=paperfall2';
+import {CollectionScreen,parseCollectionRoute} from './collection-screen.js?v=laboratory1';
+import {decoratePaperTitles} from './paper-titles.js?v=laboratory1';
+import {mountQuestionPapers,paintQuestionPaper} from './question-papers.js';
+import {enablePaperDrag} from './paper-drag.js';
+import {mountObservation} from './observation.js';
 
 const app=document.querySelector('#app'),copy=document.querySelector('#copy'),canvas=document.querySelector('#monster');
 const announcement=document.querySelector('#announcement'),dialog=document.querySelector('#name-dialog');
 const headerName=document.querySelector('#header-name'),caption=document.querySelector('#creature-caption');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)'),storageKey='graphic-monster:experience:v2';
-const feedback=['Taking shape.','Finding its balance.','Something is waking up.','Leaving an impression.','Becoming itself.'];
+const feedback=['Sample 01 retained.','Sample 02 retained.','Sample 03 retained.','Sample 04 retained.','Sample 05 retained.'];
 const freshSeed=()=>crypto.getRandomValues(new Uint32Array(1))[0];
 const escape=text=>String(text??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const labelFor=(q,value)=>q.options.find(o=>o[0]===value)?.[1];
-let state=initialState(),advanceTimer,renameFocus,transitioning=false,answerLocked=false,revealPlaying=false,revealController=null;
+let state=initialState(),advanceTimer,renameFocus,transitioning=false,answerLocked=false,revealPlaying=false,revealController=null,observation=null;
 let archiveDB,records=[],archiveFailure='',archiveQueue=Promise.resolve();
 const sharedArchive=new SharedArchive(archiveConfig);let sharedRecords=[],refreshingArchive=false;
 const afterlife=document.querySelector('#afterlife');
@@ -39,9 +38,10 @@ const previewScene=()=>state.screen==='intro'?(state.rulesVersion>=4?paperPrelud
 
 const view=new CreatureView(canvas,previewScene());
 const formation=new PaperFormation(view);
+const paperDrag=enablePaperDrag({root:copy,target:canvas,reduced,announce,canStart:()=>state.screen==='question'&&!transitioning&&!answerLocked,onDrop:value=>choose(value,{transfer:false})});
 function warmPaint(scene){void loadPaintTiles(scene).then(()=>{if(!app.hidden&&!formation.active&&!transitioning)view.renderer.draw(view.pose());});}
 warmPaint(previewScene());
-const stageVisibility=new IntersectionObserver(entries=>{if(transitioning)return;if(formation.active)formation.setVisible(entries[0].isIntersecting);else view.setVisible(entries[0].isIntersecting);},{threshold:.05});stageVisibility.observe(canvas);
+const stageVisibility=new IntersectionObserver(entries=>{if(transitioning||observation)return;if(formation.active)formation.setVisible(entries[0].isIntersecting);else view.setVisible(entries[0].isIntersecting);},{threshold:.05});stageVisibility.observe(canvas);
 function save(){
  try{sessionStorage.setItem(storageKey,JSON.stringify(state));}catch{}
  if(parseCollectionRoute(location.hash))return;
@@ -50,31 +50,36 @@ function save(){
 }
 function announce(text){announcement.textContent=text;}
 function progress(){return `<div class="dimension-nav" role="progressbar" aria-label="Design decisions" aria-valuemin="0" aria-valuemax="5" aria-valuenow="${QUESTIONS.filter(q=>state.answers[q.key]).length}">${QUESTIONS.map((q,i)=>`<span class="dimension${state.step===i?' current':''}${state.answers[q.key]?' complete':''}" aria-hidden="true"><span class="progress-mark"></span></span>`).join('')}</div>`;}
-function answer(option,index){const[value,label,detail]=option,selected=state.answers[QUESTIONS[state.step].key]===value;return `<button type="button" class="choice${selected?' selected':''}" data-value="${value}" aria-pressed="${selected}" aria-label="${label}" title="${label}"><span class="choice-art">${visualChoice(value)}</span><span class="choice-label">${label}</span><span class="choice-check" aria-hidden="true">✓</span></button>`;}
+function answer(option,index){const[value,label]=option,selected=state.answers[QUESTIONS[state.step].key]===value;return `<button type="button" class="choice${selected?' selected':''}" data-value="${value}" aria-pressed="${selected}" aria-label="${label}"><span class="choice-art"><canvas data-paper-choice="${value}" aria-hidden="true"></canvas></span><span class="choice-label">${label}</span><span class="choice-number" aria-hidden="true">0${index+1}</span><span class="choice-check" aria-hidden="true">✓</span></button>`;}
 function render({focus=false,selection=false}={}){
+ observation?.destroy();observation=null;
+ paperDrag.cancel();
  document.body.classList.toggle('intro-paper',state.screen==='intro'&&!parseCollectionRoute(location.hash));
+ document.body.classList.toggle('question-paper',state.screen==='question'&&!parseCollectionRoute(location.hash));
  const wordmark=document.querySelector('.wordmark');wordmark.hidden=state.screen==='intro';if(state.screen==='reveal')wordmark.removeAttribute('href');else wordmark.setAttribute('href','./');wordmark.setAttribute('aria-label',state.screen==='reveal'?'GRAPHIC MONSTER':'Graphic Monster home');
  app.className=`experience screen-${state.screen}${state.rulesVersion>=4?" medium-paper":""}`;document.title=state.screen==='reveal'?`${state.name} — GRAPHIC MONSTER`:'GRAPHIC MONSTER — Your design decisions create a creature';
  document.querySelector('.header-actions [data-action="archive"]').hidden=false;
  headerName.hidden=state.screen!=='question';headerName.textContent=state.name;headerName.setAttribute('aria-label',`Edit ${state.name}’s name`);
  caption.textContent='';
+ canvas.dataset.paperWorkbench=String(state.screen==='question');
  if(state.screen==='intro'){
-   copy.innerHTML=`${state.rulesVersion>=4?'<h1 class="intro-title paper-title" tabindex="-1">GRAPHIC<br>MONSTER</h1>':'<h1 class="intro-title furry-title" tabindex="-1"><span class="sr-only">GRAPHIC MONSTER</span><canvas id="title-art" aria-hidden="true"></canvas></h1>'}<form id="create-form" class="name-form"><label class="sr-only" for="monster-name">Name</label><input id="monster-name" name="monsterName" placeholder="Name" value="${escape(state.name)}" required maxlength="48" autocomplete="off" enterkeyhint="go" dir="auto"></form>`;
+   copy.innerHTML=`${state.rulesVersion>=4?'<h1 class="intro-title paper-title" tabindex="-1">GRAPHIC<br>MONSTER</h1>':'<h1 class="intro-title furry-title" tabindex="-1"><span class="sr-only">GRAPHIC MONSTER</span><canvas id="title-art" aria-hidden="true"></canvas></h1>'}<form id="create-form" class="name-form"><label class="sr-only" for="monster-name">Name</label><input id="monster-name" name="monsterName" placeholder="Name" value="${escape(state.name)}" required maxlength="48" autocomplete="off" enterkeyhint="go" dir="auto"><button class="lab-entry" type="submit">Begin</button></form><button class="text-button intro-index" data-action="archive">Living archive</button>`;
    if(copy.querySelector('#title-art'))drawWordmark(copy.querySelector('#title-art'));
    document.querySelector('#stage-note').textContent='';
    canvas.setAttribute('aria-label','An amorphous living painting. No face or limbs yet.');
  }else if(state.screen==='question'){
    const q=QUESTIONS[state.step];
-   copy.innerHTML=`<div class="question-top"><span class="counter">0${state.step+1} <span>/ 05</span></span></div><h1 class="question-title" tabindex="-1">${q.title.replace('\n',' ')}</h1><div class="choices ${q.options.length===5?'five':'two'}" role="group" aria-label="${q.title.replace('\n',' ')}">${q.options.map(answer).join('')}</div><div class="question-footer">${progress()}</div>`;
+   copy.innerHTML=`<h1 class="sr-only" tabindex="-1">${q.title.replace('\n',' ')} Drag one paper object into the living cloud. Keyboard: choose an object and press Enter.</h1><div class="sr-only">${progress()}</div><div class="choices ${q.options.length===5?'five':'two'}" role="group" aria-label="Paper objects">${q.options.map(answer).join('')}</div>`;
+   mountQuestionPapers(copy);
    document.querySelector('#stage-note').textContent='';
    canvas.setAttribute('aria-label',`${state.name}, evolving through your design decisions. ${QUESTIONS.filter(q=>state.answers[q.key]).map(q=>labelFor(q,state.answers[q.key])).join(', ')}.`);
  }else{
    state=reducer(state,{type:'REVEAL'});
    const story=state.story.text;
-   const nameSize=state.name.length>24?28:state.name.length>12?36:44;
-   copy.innerHTML=`<h1 class="reveal-name" style="--name-size:${nameSize}px" tabindex="-1" dir="auto">${escape(state.name)}</h1><div class="poster-actions"><button type="button" class="text-button visit-archive" data-action="archive">Archive <span aria-hidden="true">↗</span></button><button type="button" class="text-button" data-action="reset">New monster</button></div>`;
+   const nameSize=22;
+   copy.innerHTML=`<div class="observation-identity"><span class="lab-meta">OBSERVATION</span><h1 class="reveal-name" style="--name-size:${nameSize}px" tabindex="-1" dir="auto">${escape(state.name)}</h1></div><div class="observation-toolbar"><span class="observation-log" role="status" aria-live="polite">material / settled</span><div><button class="text-button" type="button" data-observe="stimulate">Place stimulus</button><button class="text-button" type="button" data-observe="pause" aria-pressed="false">Pause</button></div></div><div class="poster-actions"><button type="button" class="text-button visit-archive" data-action="archive">Living archive</button><button type="button" class="text-button" data-action="reset">New experiment</button></div>`;
    fitRevealName();
-   document.querySelector('#full-story').innerHTML=`<p class="personality" aria-live="polite" aria-atomic="true">${escape(story)}</p><button type="button" class="another-story text-button" data-action="story">New description</button>`;
+   document.querySelector('#full-story').innerHTML=`<details class="field-notes"><summary>Field notes</summary><p class="personality">${escape(story)}</p></details>`;
    void syncArchive(structuredClone(state));
    document.querySelector('#stage-note').textContent='';canvas.setAttribute('aria-label',revealPlaying?state.name:`${state.name}. ${story}`);
  }
@@ -83,6 +88,12 @@ function render({focus=false,selection=false}={}){
  afterlife.hidden=state.screen!=='reveal'||revealPlaying;
  document.body.classList.toggle('monster-reveal',state.screen==='reveal'&&!parseCollectionRoute(location.hash));
  if(state.rulesVersion>=6)decoratePaperTitles(copy,{scene:state.screen==='reveal'?previewScene():undefined});
+ const ledger=document.querySelector('#material-record');ledger.hidden=state.screen==='intro';
+ ledger.innerHTML=QUESTIONS.map((q,i)=>`<span class="material-sample${state.answers[q.key]?' retained':''}" title="${escape(state.answers[q.key]?labelFor(q,state.answers[q.key]):'Pending material')}">${state.answers[q.key]?`<canvas data-retained="${state.answers[q.key]}" aria-hidden="true"></canvas>`:`<span aria-hidden="true">${i+1}</span>`}</span>`).join('');
+ ledger.setAttribute('aria-label',`${QUESTIONS.filter(q=>state.answers[q.key]).length} of 5 material samples retained`);
+ for(const sample of ledger.querySelectorAll('canvas'))paintQuestionPaper(sample,sample.dataset.retained);
+ document.querySelector('#material-step').textContent=state.screen==='question'?`MATERIAL / ${String(state.step+1).padStart(2,'0')}`:'';
+ if(state.screen==='reveal'&&!revealPlaying)observation=mountObservation(app.querySelector('.studio'),view,{log:copy.querySelector('.observation-log'),pause:copy.querySelector('[data-observe="pause"]'),stimulate:copy.querySelector('[data-observe="stimulate"]'),enabled:()=>!app.hidden&&!revealPlaying});
  window.dispatchEvent(new CustomEvent('graphic-monster:intro',{detail:state.screen==='intro'&&!parseCollectionRoute(location.hash)}));
  if(focus){
    copy.querySelector('h1')?.focus({preventScroll:true});
@@ -106,9 +117,12 @@ function returnToExperience(){
  collection.close();app.hidden=false;render({focus:true});if(state.screen!=='question')view.setVisible(true);window.scrollTo({top:0,behavior:'instant'});
 }
 async function routeCollection(){
+ observation?.destroy();observation=null;
+ paperDrag.cancel();
  const route=parseCollectionRoute(location.hash);
  if(!route){collection.close();app.hidden=false;render();if(state.screen!=='question')view.setVisible(true);return;}
  document.body.classList.remove('intro-paper');
+ document.body.classList.remove('question-paper');
  revealController?.abort();document.body.classList.remove('monster-reveal');
  window.dispatchEvent(new CustomEvent('graphic-monster:intro',{detail:false}));
  clearTimeout(advanceTimer);formation.stop();app.hidden=true;afterlife.hidden=true;headerName.hidden=true;view.setVisible(false);
@@ -148,40 +162,29 @@ async function syncArchive(snapshot){
   catch(error){console.warn('Shared archive save:',error.message);archiveFailure=localSaved?'Saved here. Sharing unavailable; retry from Archive.':'This creature could not be saved. Your existing collection is retained.';}
  });await archiveQueue;
 }
-function artRect(){const r=canvas.getBoundingClientRect(),scale=Math.min(r.width/600,r.height/760);return {x:r.left+r.width/2,y:r.top+r.height/2,scale};}
 async function enterReveal(next,{focus=true}={}){
  const sourceState=state,controller=new AbortController();revealController=controller;transitioning=true;revealPlaying=true;clearTimeout(advanceTimer);
  copy.querySelectorAll('button').forEach(b=>b.disabled=true);
- document.body.classList.add('reveal-playing');app.classList.add('reveal-air');app.dataset.revealPhase='assembling';view.renderer.ground=false;window.scrollTo({top:0,behavior:'instant'});
+ app.dataset.revealPhase='assembling';app.classList.add('culture-assembling');
  const finalScene=generateMonster({...next.answers,...(next.visualSeed!==null?{seed:next.visualSeed}:{})},next.rulesVersion);
- let papers={finish(){}};
  try{
-  papers=createRevealPapers({scene:finalScene,name:next.name,reduced});
   await formation.reveal(finalScene);
   if(controller.signal.aborted||state!==sourceState||parseCollectionRoute(location.hash))return;
-  view.visible=false;view.update(finalScene,{immediate:true});view.stop();state=next;render({focus:false});app.classList.add('reveal-stage');
-  const completed=await playRevealFlight({view,app,reduced,signal:controller.signal,papers});
-  if(!completed||controller.signal.aborted||parseCollectionRoute(location.hash))return;
-  view.renderer.ground=true;view.renderer.draw(finalScene);
-  const before=artRect();app.classList.remove('reveal-stage');app.querySelector('.studio').style.removeProperty('transform');app.querySelector('.studio').style.removeProperty('transform-origin');app.style.removeProperty('--fall-distance');
-  window.scrollTo({top:0,behavior:'instant'});const after=artRect();
+  state=next;view.visible=false;view.update(finalScene,{immediate:true});view.stop();render();
+  app.dataset.revealPhase='settling';
   if(!reduced.matches&&!document.hidden){
-   const landing=canvas.animate([{transform:`translate(${before.x-after.x}px,${before.y-after.y}px) scale(${before.scale/after.scale})`},{transform:'translate(0,0) scale(1)'}],{duration:320,easing:'cubic-bezier(.22,.72,.2,1)'});
-   await landing.finished.catch(()=>{});
+   const settle=canvas.animate([{opacity:.7,transform:'translateY(-6px)'},{opacity:1,transform:'none'}],{duration:650,easing:'cubic-bezier(.2,.7,.3,1)'});
+   controller.signal.addEventListener('abort',()=>settle.cancel(),{once:true});
+   await settle.finished.catch(()=>{});
   }
-  if(controller.signal.aborted)return;
-  revealPlaying=false;document.body.classList.remove('reveal-playing');app.dataset.revealPhase='complete';
-  papers.finish();
-  afterlife.hidden=false;canvas.setAttribute('aria-label',`${state.name}. ${state.story.text}`);
-  if(!reduced.matches&&!document.hidden)afterlife.animate([{opacity:0,transform:'translateY(10px)'},{opacity:1,transform:'none'}],{duration:400,easing:'ease-out'});
-  view.visible=true;view.familyDue=performance.now()+familyProfile(finalScene).pause;view.update(finalScene,{immediate:true});
-  if(focus)copy.querySelector('h1')?.focus({preventScroll:true});announce(`${state.name}. ${state.story.text}`);
+  if(controller.signal.aborted||parseCollectionRoute(location.hash))return;
+  revealPlaying=false;app.dataset.revealPhase='complete';view.visible=true;view.update(finalScene,{immediate:true});render({focus});
+  view.react('look',{delay:700});announce(state.name+'. Observation ready.');
  }catch(error){
-  console.warn('Creature arrival:',error.message);
-  if(!controller.signal.aborted&&!parseCollectionRoute(location.hash)){revealPlaying=false;state=next;view.visible=true;view.update(finalScene,{immediate:true});render({focus});window.scrollTo({top:0,behavior:'instant'});}
+  console.warn('Material formation:',error.message);
+  if(!controller.signal.aborted&&!parseCollectionRoute(location.hash)){revealPlaying=false;state=next;view.visible=true;view.update(finalScene,{immediate:true});render({focus});}
  }finally{
-  papers.finish();
-  if(revealController===controller){transitioning=false;answerLocked=false;revealPlaying=false;revealController=null;view.renderer.ground=true;document.body.classList.remove('reveal-playing');app.classList.remove('reveal-air','reveal-stage');app.style.removeProperty('--fall-distance');app.querySelector('.studio')?.style.removeProperty('transform');app.querySelector('.studio')?.style.removeProperty('transform-origin');}
+  if(revealController===controller){transitioning=false;answerLocked=false;revealPlaying=false;revealController=null;app.classList.remove('culture-assembling');}
  }
 }
 function dispatch(event,{focus=true,art=false}={}){
@@ -189,17 +192,18 @@ function dispatch(event,{focus=true,art=false}={}){
  if(previous==='question'&&next.screen==='reveal'){enterReveal(next,{focus});return;}
  state=next;render({focus});if(previous!=='reveal'&&state.screen==='reveal')window.scrollTo({top:0,behavior:'instant'});if(art&&state.screen!=='question'){const scene=previewScene();view.update(scene,{immediate:state.screen==='intro'});warmPaint(scene);}
 }
-function choose(value){
+function choose(value,{transfer=true}={}){
  if(transitioning||answerLocked)return;
  answerLocked=true;
- transferMaterial(copy.querySelector(`[data-value="${value}"] .choice-art`));
+ if(transfer)transferMaterial(copy.querySelector(`[data-value="${value}"] .choice-art`));
  clearTimeout(advanceTimer);state=reducer(state,{type:'SELECT',value});const q=QUESTIONS[state.step];render({selection:true});announce(`${labelFor(q,value)} selected. ${feedback[state.step]}`);
  copy.querySelectorAll('.choice').forEach(b=>b.disabled=true);
- advanceTimer=setTimeout(()=>{answerLocked=false;dispatch({type:'ADVANCE'});},reduced.matches?0:140);
+ advanceTimer=setTimeout(()=>{answerLocked=false;dispatch({type:'ADVANCE'});},reduced.matches?0:950);
 }
 function transferMaterial(source){
  if(!source||reduced.matches||document.hidden)return;
  const start=source.getBoundingClientRect(),target=canvas.getBoundingClientRect(),fragment=source.cloneNode(true);
+ source.querySelectorAll('canvas').forEach((original,i)=>{const clone=fragment.querySelectorAll('canvas')[i];clone.getContext('2d').drawImage(original,0,0);});
  fragment.className='material-transfer';fragment.setAttribute('aria-hidden','true');
  Object.assign(fragment.style,{left:`${start.left}px`,top:`${start.top}px`,width:`${start.width}px`,height:`${start.height}px`});
  // Repeated SVG clip ids must stay local to the travelling copy.
@@ -219,7 +223,7 @@ document.querySelector('#edit-monster-name').addEventListener('input',event=>eve
 dialog.addEventListener('close',()=>renameFocus?.isConnected&&renameFocus.focus({preventScroll:true}));
 document.addEventListener('click',event=>{
  const button=event.target.closest('button');if(!button||button.disabled||transitioning||answerLocked)return;
- if(button.dataset.value&&state.screen==='question'){choose(button.dataset.value);return;}
+ if(button.dataset.value&&state.screen==='question'){if(event.detail===0)choose(button.dataset.value);return;}
  switch(button.dataset.action){
   case'archive':clearTimeout(advanceTimer);location.hash='archive';break;
   case'back':dispatch({type:'BACK'},{art:true});break;
