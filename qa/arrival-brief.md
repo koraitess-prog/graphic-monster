@@ -1,13 +1,16 @@
-# Creature entrance
+# Arrival / observation transition
 
-Silent interactive paper theatre in the existing illustrated house style. Keep saved scenes and anatomy unchanged; use the approved family rigs for the physical reaction.
+The main five-choice experience again assembles, suspends, drops and recovers the creature before opening observation. This is presentation only; saved scenes, DNA, anatomy and archive persistence are unchanged.
 
-Frame reference: after the burst reaches the edges, scraps stay anchored to the original upper page. Rendering subtracts the actual browser scroll from those coordinates, so they leave above the viewport as the camera follows the falling creature into the lower screen. They are not a fixed overlay travelling along with the camera. Name letters continue travelling with the creature.
+- 2.1 s assembly into the existing printed anatomy, followed by a 900 ms suspended look and loss of balance.
+- 4.5 s accelerating fall over 2.2 viewport heights. The camera trails the body rather than locking to it. Existing connected arm flails carry the same paper textures.
+- Forty seeded print scraps burst outward and remain anchored to the upper page. Their viewport positions subtract actual scroll, so they leave above the visitor as the creature descends.
+- A 480 ms impact folds the illustration to 24% of its height, followed by a 1 s heap pause and 1.9 s recovery. A watchful look, twitch or inspection replaces an automatic happy greeting.
+- The actual observation geometry is measured before extending the page. At landing, world displacement equals camera displacement. Removing both together leaves the canvas in the same viewport position; stable scrollbar space prevents a lateral shift.
+- Only then do the small name, observation tools and optional Field notes become available. Falling name letters remain supported in the reusable paper effect but are deliberately not used in this quieter composition.
+- Skip / Escape finishes directly. Reduced motion omits the animated arrival and overlay; hiding, resizing and aborting dispose of frames, listeners, controls and temporary layout.
+- The paper cloud uses the same camera scale when assembly starts, avoiding an initial zoom jump on short mobile work areas. Narrow screens bake fewer paper sprites.
 
-User direction: all untextured UI text in IBM Mono; a much smaller creature name; answers commit immediately and advance without Next or revision controls. The creature assembles in the air, falls while the page follows, gets up, performs, then its description appears.
+Replay the same runner at `/qa/character-review/arrival.html`; the selector covers all eight families. This local study creates no archive records.
 
-Presentation timing chosen for this pass: existing 2.1-second paper assembly; 350 ms suspension; 900 ms accelerating drop with a following browser camera; 300 ms impact; 800 ms recovery; family-specific look/greeting; short settle and description fade. Mouse/keyboard answer acknowledgement lasts 140 ms with input locked. Reduced motion reveals the final scene directly, with no forced scroll. Hidden tabs shorten the sequence; route changes abort it. Ordinary archived creatures retain their original rendering and behavior.
-
-Refinement: 40 seeded scraps erupt from the forming creature into the four frame edges, using its saved print stocks and Anidoodle contour primitives. Baked sprites keep their grain while moving. The fall spans 95% of viewport height; the camera waits until the last third of the fall before catching up. Separate printed name glyphs travel with the creature and align during recovery. Edge papers fade after impact/recovery, leaving the creature as the focal subject. Silent, no new anatomy, no saved data changes. Reduced motion omits the overlay entirely.
-
-Extended choreography: 4.5-second descent over 2.2 viewport heights with alternating two-arm flails. Camera lag is bounded so the puppet stays visible. A 480 ms impact folds the printed puppet to 24% of its height, pinned to the floor, followed by a 1-second heap pause and a 1.9-second rise. Only presentation poses change; saved scenes and regular family behaviors remain intact. The letters and edge scraps follow the longer timeline.
+Focused arrival, paper anchoring, observation and lifecycle tests pass. Static build and syntax checks pass. Browser inspection is unavailable in this session (no enabled browser surfaces); visual desktop/mobile review remains pending. No commit, push or deployment was performed for this refinement.

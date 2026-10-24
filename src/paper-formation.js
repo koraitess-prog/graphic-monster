@@ -84,9 +84,10 @@ export class PaperFormation{
   pos.x=300+(pos.x-300)*(1+press);pos.y=362+(pos.y-362)*(1-press*.8);pos.angle+=Math.sin(raw*Math.PI)*(i%2?1:-1)*.44;pos.size*=1+Math.sin(raw*Math.PI)*(i%3===0?.50:-.13);return pos;
  }
  stamp(g,p,pos,scale){g.save();g.translate(pos.x,pos.y);g.rotate(pos.angle??0);g.scale(scale,scale);g.drawImage(p.image,-p.w/2,-p.h/2,p.w,p.h);g.restore();}
+ camera(){return this.canvas.dataset.paperWorkbench==='true'?Math.min(1.05,this.canvas.clientHeight/Math.max(1,this.canvas.clientWidth)*1.3):this.canvas.clientWidth<450?1.4:1.05;}
  draw(now){
   const g=this.renderer.ctx;this.renderer.resize(1.5);g.setTransform(1.5,0,0,1.5,0,0);g.clearRect(0,0,600,760);g.fillStyle=this.renderer.background;g.fillRect(0,0,600,760);
-  const camera=this.canvas.dataset.paperWorkbench==='true'?Math.min(1.05,this.canvas.clientHeight/Math.max(1,this.canvas.clientWidth)*1.3):this.canvas.clientWidth<450?1.4:1.05;g.translate(300,362);g.scale(camera,camera);g.translate(-300,-362);
+  const camera=this.camera();g.translate(300,362);g.scale(camera,camera);g.translate(-300,-362);
   const parts=this.visibleParts(),time=this.reduced.matches?0:(now-this.begun)/1000,traits=cloudTraits(this.answers);
   // One compatible eye, briefly visible between back and front layers. The
   // source is the actual future eye, never an invented facial configuration.
@@ -102,10 +103,10 @@ export class PaperFormation{
  async reveal(scene){
   const now=performance.now(),positions=new Map(this.visibleParts().map((p,i)=>[p.id,this.placement(p,i,now)]));this.stop();this.canvas.dataset.formation='assembling';
   if(this.reduced.matches||document.hidden){this.canvas.dataset.formation='complete';this.view.visible=true;this.view.update(scene,{immediate:true});return;}
-  const baked=this.bake(scene),all=[...baked.parts,...baked.eyes,...baked.lines],g=this.renderer.ctx;this.renderer.resize(1.5);
+  const cameraStart=this.camera(),baked=this.bake(scene),all=[...baked.parts,...baked.eyes,...baked.lines],g=this.renderer.ctx;this.renderer.resize(1.5);
   this.cancelled=false;await new Promise(resolve=>{this.resolveReveal=resolve;const frame=time=>{
    const elapsed=(time-now)/2100;g.setTransform(1.5,0,0,1.5,0,0);g.clearRect(0,0,600,760);g.fillStyle=this.renderer.background;g.fillRect(0,0,600,760);
-   const camera=mix(this.canvas.clientWidth<450?1.4:1.05,1,smooth(elapsed));g.translate(300,362);g.scale(camera,camera);g.translate(-300,-362);
+   const camera=mix(cameraStart,1,smooth(elapsed));g.translate(300,362);g.scale(camera,camera);g.translate(-300,-362);
    all.forEach((p,i)=>{const random=rng(hash(p.id)),delay=p.kind==='eye'?.40:random()*.19,t=smooth((elapsed-delay)/(.98-delay)),from=positions.get(p.id)??{x:300+(random()-.5)*120,y:360+(random()-.5)*90,angle:(random()-.5)*.5,size:0};const startScale=from.size/Math.max(p.w,p.h),s=mix(startScale,1,t);const lift=Math.sin(t*Math.PI)*(p.kind==='eye'?8:18);
     this.stamp(g,p,{x:mix(from.x,p.cx,t),y:mix(from.y,p.cy,t)-lift,angle:mix(from.angle,0,t)},s);
    });

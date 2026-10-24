@@ -1,32 +1,66 @@
 import {engravingTile} from './engraving.js';
-import {introScrapPoints} from './intro-scraps.js';
+import {tornContour,paperCutout} from './paper-library.js';
+import {rng} from './anidoodle-kit.js';
 
-// Material studies, not decorative icons. Each pair uses the same stock;
-// only the decision being asked changes its composition.
-const cache=new Map(),cream='#e8ddba',ochre='#d6a333',ink='#151a1b';
+// Distinct silhouettes and negative spaces, printed with the creatures' material.
+const cache=new Map(),cream='#e8ddba',ochre='#d6a333',ink='#151a1b',pink='#ce6587',teal='#519f7d',blue='#5765c4',red='#f05226';
 const factory=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;};
+export function drawQuestionObject(g,value,makeCanvas=factory){
+ const seed=[...value].reduce((n,c)=>n*31+c.charCodeAt(0),7)>>>0,random=rng(seed);let piece=0;
+ const stocks=new Map();
+ const paint=(color,pattern)=>{const key=color+'/'+pattern;if(stocks.has(key))return stocks.get(key);const {tile,transform}=engravingTile(makeCanvas,{color,texture:.25,printRevision:3,grainPhase:2,grainAngle:-7,paperPattern:pattern});const fill=g.createPattern(tile,'repeat');fill.setTransform(transform);stocks.set(key,fill);return fill;};
+ const outline=points=>{g.beginPath();tornContour(points,seed+piece++, .65).forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();};
+ const paper=(points,color=cream,pattern)=>{outline(points);g.fillStyle=paint(color,pattern);g.fill();};
+ const strip=(x,y,w,h,color=cream)=>paper([[x,y],[x+w,y],[x+w,y+h],[x,y+h]],color);
+ const blob=(cx,cy,rx,ry,color,phase=0)=>paper(Array.from({length:44},(_,i)=>{const a=i/44*Math.PI*2,r=1+.07*Math.sin(a*5+phase)+.04*Math.cos(a*9);return [cx+Math.cos(a)*rx*r,cy+Math.sin(a)*ry*r];}),color);
+ const ribbon=(points,width,color)=>{const side=sign=>points.map(([x,y],i)=>{const p=points[Math.max(0,i-1)],q=points[Math.min(points.length-1,i+1)],dx=q[0]-p[0],dy=q[1]-p[1],len=Math.hypot(dx,dy)||1;return [x-dy/len*width*sign/2,y+dx/len*width*sign/2];});paper([...side(1),...side(-1).reverse()],color);};
+ const cut=(family,index,x,y,w,h,color,angle=0)=>paper(paperCutout(family,index,{x,y,width:w,height:h,angle}).points,color,family==='typography'?'newsprint':undefined);
+ g.save();
+ if(value==='typography'){
+  paper([[24,99],[54,18],[70,18],[99,99],[76,99],[62,51],[44,99]],cream);strip(43,70,37,11,cream);
+  cut('typography',2,111,62,57,80,pink);strip(87,22,13,78,pink);strip(145,49,12,51,ochre);blob(151,30,8,8,ochre);
+ }
+ if(value==='grid'){
+  for(let i=0;i<4;i++)strip(43+i*29,17,12,88,teal);
+  for(let i=0;i<3;i++)strip(28,30+i*29,141,12,cream);
+  for(let y=0;y<3;y++)for(let x=0;x<4;x++)if((x+y)%2===0)strip(43+x*29,30+y*29,12,12,teal);
+ }
+ if(value==='color'){
+  blob(78,56,50,39,red,.7);blob(121,70,48,37,blue,2);paper([[91,27],[117,35],[124,68],[101,91],[85,72]],ochre);
+ }
+ if(value==='shape')cut('shape',1,102,61,130,104,teal,-.24);
+ if(value==='texture'){
+  g.save();g.translate(37,23);g.rotate(-.14);g.fillStyle=cream;
+  for(let i=0;i<360;i++){const x=random()*126,y=random()*78,edge=Math.sin(x*.06)*8;if(y>edge+4&&y<70+edge){g.globalAlpha=.22+random()*.65;g.fillRect(x,y,1+random()*3,1+random()*12);}}
+  g.globalAlpha=1;g.strokeStyle=ochre;g.lineWidth=2;
+  for(let i=0;i<8;i++){g.beginPath();g.moveTo(5+i*14,7);g.lineTo(16+i*14,69);g.stroke();}g.restore();
+ }
+ if(value==='order'){for(let i=0;i<5;i++)strip(29,23+i*17,142,7,i===2?ochre:cream);strip(29,19,5,87,ochre);}
+ if(value==='experiment'){
+  ribbon([[30,91],[55,27],[134,85],[67,98],[83,18],[156,42],[130,102]],12,cream);ribbon([[39,42],[103,64],[159,24]],7,ochre);
+ }
+ if(value==='clarity'){blob(100,60,43,43,ochre);blob(100,60,13,13,ink);}
+ if(value==='expression'){
+  paper([[24,77],[46,20],[100,28],[149,14],[174,62],[150,104],[73,96]],pink);
+  g.save();g.globalCompositeOperation='destination-out';
+  [[54,58,15],[93,48,7],[126,68,22],[146,35,5],[86,83,4]].forEach(([x,y,r])=>blob(x,y,r,r,'#000'));g.restore();
+ }
+ if(value==='minimal'){paper([[34,24],[165,19],[158,104],[29,96]],cream);ribbon([[92,53],[107,62]],3,ink);}
+ if(value==='rich'){
+  paper([[22,52],[39,20],[158,16],[178,78],[150,106],[36,102]],ochre,'newsprint');
+  cut('typography',2,65,61,76,80,blue,-.35);paper([[78,14],[149,27],[125,91],[60,78]],pink,'magazine-type');
+  paper([[30,84],[158,43],[167,63],[45,107]],cream,'newsprint');for(let i=0;i<5;i++)strip(127+i*6,74-i*3,3,22,ink);
+ }
+ if(value==='precise'){ribbon([[27,95],[94,21],[163,94]],10,cream);paper([[94,21],[99,51],[163,94],[146,77]],ochre);}
+ if(value==='playful'){
+  const p=Array.from({length:100},(_,i)=>{const t=i/99*Math.PI*3.1,r=34*(1-i/140);return [101+Math.cos(t)*r+(i/99-.5)*76,60+Math.sin(t)*r];});
+  ribbon(p,11,pink);ribbon([[30,87],[42,104],[57,96]],7,ochre);
+ }
+ g.restore();
+}
 export function paintQuestionPaper(canvas,value){
- canvas.width=400;canvas.height=240;const target=canvas.getContext('2d');
- if(cache.has(value)){target.drawImage(cache.get(value),0,0);return;}
- const plate=factory(400,240),g=plate.getContext('2d');g.scale(2,2);
- const stock=(kind,x,y,w,h,color=cream,pattern,angle=0)=>{
-  g.save();g.translate(x,y);g.rotate(angle);const points=introScrapPoints(kind,w,h),{tile,transform}=engravingTile(factory,{color,texture:.22,printRevision:3,grainPhase:1,grainAngle:-7,paperPattern:pattern});
-  const fill=g.createPattern(tile,'repeat');fill.setTransform(transform);g.fillStyle=fill;g.beginPath();points.forEach((p,i)=>i?g.lineTo(p[0]-w/2,p[1]-h/2):g.moveTo(p[0]-w/2,p[1]-h/2));g.closePath();g.fill();g.restore();
- };
- if(value==='typography'){stock(0,100,60,125,105,cream,'newsprint');g.fillStyle=ink;g.font='900 73px Georgia';g.textAlign='center';g.fillText('Aa',100,84);}
- if(['grid','order','experiment'].includes(value)){
-  const loose=value==='experiment';for(let i=0;i<9;i++)stock(5,66+i%3*34+(loose?Math.sin(i*9)*9:0),27+Math.floor(i/3)*33+(loose?Math.cos(i*7)*7:0),36,35,i===4?ochre:cream,undefined,loose?Math.sin(i*3)*.22:0);
- }
- if(value==='color'){stock(0,75,51,89,83,'#f05226');stock(2,124,59,90,96,'#519f7d');stock(1,92,86,96,63,ochre);}
- if(value==='shape')stock(4,100,60,147,111,cream);
- if(value==='texture')stock(0,100,60,143,110,cream,'stripes-wave');
- if(value==='clarity'||value==='expression'){
-  const sizes=value==='clarity'?[91,30,30]:[59,59,59];for(let i=0;i<3;i++)stock(2,[76,138,135][i],[61,33,88][i],sizes[i],sizes[i],i?cream:ochre);
- }
- if(value==='minimal'||value==='rich'){
-  stock(0,100,60,145,111,cream);g.fillStyle=ink;for(let i=0;i<(value==='rich'?18:3);i++){const x=54+(i%6)*18,y=35+Math.floor(i/6)*23;g.fillRect(x,y,4,16);}
- }
- if(value==='precise'||value==='playful')for(let i=0;i<3;i++)stock(value==='precise'?6:3,61+i*39,60,35,112,i===1?ochre:cream,undefined,value==='playful'?Math.sin(i*5)*.18:0);
- cache.set(value,plate);target.drawImage(plate,0,0);
+ canvas.width=600;canvas.height=360;const target=canvas.getContext('2d');
+ if(!cache.has(value)){const plate=factory(600,360),g=plate.getContext('2d');g.scale(3,3);drawQuestionObject(g,value);cache.set(value,plate);}
+ target.drawImage(cache.get(value),0,0);
 }
 export function mountQuestionPapers(root){for(const c of root.querySelectorAll('canvas[data-paper-choice]'))paintQuestionPaper(c,c.dataset.paperChoice);}

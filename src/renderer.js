@@ -135,6 +135,10 @@ export class MonsterRenderer{
    for(const layer of layers){cumulative+=layer.weight;this.ctx.globalAlpha=layer.weight/cumulative;const r=this.paperRaster(points,layer.style);this.ctx.drawImage(r.image,r.x,r.y);}this.ctx.globalAlpha=1;
  }
  fill(points,part){
+   if(part.paperOuterSource){
+    this.ctx.save();this.ctx.transform(...part.paperOuterTransform);
+    this.fill(part.paperOuterSource.points,part.paperOuterSource);this.ctx.restore();return;
+   }
    const ctx=this.ctx,p=polyPath(points);if(part.opening){ctx.fillStyle=this.background;ctx.fill(p);return;}
    if(part.paperTextureTransform){
     ctx.save();ctx.clip(p);ctx.transform(...part.paperTextureTransform);

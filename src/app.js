@@ -15,6 +15,9 @@ import {decoratePaperTitles} from './paper-titles.js?v=laboratory1';
 import {mountQuestionPapers,paintQuestionPaper} from './question-papers.js';
 import {enablePaperDrag} from './paper-drag.js';
 import {mountObservation} from './observation.js';
+import {playRevealFlight} from './reveal-flight.js?v=arrival2';
+import {createRevealPapers} from './reveal-papers.js?v=arrival2';
+import {familyProfile} from './family-motion.js';
 
 const app=document.querySelector('#app'),copy=document.querySelector('#copy'),canvas=document.querySelector('#monster');
 const announcement=document.querySelector('#announcement'),dialog=document.querySelector('#name-dialog');
@@ -63,7 +66,7 @@ function render({focus=false,selection=false}={}){
  caption.textContent='';
  canvas.dataset.paperWorkbench=String(state.screen==='question');
  if(state.screen==='intro'){
-   copy.innerHTML=`${state.rulesVersion>=4?'<h1 class="intro-title paper-title" tabindex="-1">GRAPHIC<br>MONSTER</h1>':'<h1 class="intro-title furry-title" tabindex="-1"><span class="sr-only">GRAPHIC MONSTER</span><canvas id="title-art" aria-hidden="true"></canvas></h1>'}<form id="create-form" class="name-form"><label class="sr-only" for="monster-name">Name</label><input id="monster-name" name="monsterName" placeholder="Name" value="${escape(state.name)}" required maxlength="48" autocomplete="off" enterkeyhint="go" dir="auto"><button class="lab-entry" type="submit">Begin</button></form><button class="text-button intro-index" data-action="archive">Living archive</button>`;
+   copy.innerHTML=`${state.rulesVersion>=4?'<h1 class="intro-title paper-title" tabindex="-1">GRAPHIC<br>MONSTER</h1>':'<h1 class="intro-title furry-title" tabindex="-1"><span class="sr-only">GRAPHIC MONSTER</span><canvas id="title-art" aria-hidden="true"></canvas></h1>'}<form id="create-form" class="name-form"><label class="sr-only" for="monster-name">Name</label><input id="monster-name" name="monsterName" placeholder="Name" value="${escape(state.name)}" required maxlength="48" autocomplete="off" enterkeyhint="go" dir="auto"><button class="lab-entry" type="submit">Begin</button></form>`;
    if(copy.querySelector('#title-art'))drawWordmark(copy.querySelector('#title-art'));
    document.querySelector('#stage-note').textContent='';
    canvas.setAttribute('aria-label','An amorphous living painting. No face or limbs yet.');
@@ -77,18 +80,18 @@ function render({focus=false,selection=false}={}){
    state=reducer(state,{type:'REVEAL'});
    const story=state.story.text;
    const nameSize=22;
-   copy.innerHTML=`<div class="observation-identity"><span class="lab-meta">OBSERVATION</span><h1 class="reveal-name" style="--name-size:${nameSize}px" tabindex="-1" dir="auto">${escape(state.name)}</h1></div><div class="observation-toolbar"><span class="observation-log" role="status" aria-live="polite">material / settled</span><div><button class="text-button" type="button" data-observe="stimulate">Place stimulus</button><button class="text-button" type="button" data-observe="pause" aria-pressed="false">Pause</button></div></div><div class="poster-actions"><button type="button" class="text-button visit-archive" data-action="archive">Living archive</button><button type="button" class="text-button" data-action="reset">New experiment</button></div>`;
+   copy.innerHTML=`<div class="observation-identity"><h1 class="reveal-name" style="--name-size:${nameSize}px" tabindex="-1" dir="auto">${escape(state.name)}</h1><p class="specimen-description" dir="auto">${escape(story)}</p></div>`;
    fitRevealName();
-   document.querySelector('#full-story').innerHTML=`<details class="field-notes"><summary>Field notes</summary><p class="personality">${escape(story)}</p></details>`;
+   document.querySelector('#full-story').replaceChildren();
    void syncArchive(structuredClone(state));
    document.querySelector('#stage-note').textContent='';canvas.setAttribute('aria-label',revealPlaying?state.name:`${state.name}. ${story}`);
  }
  if(state.screen==='question'){formation.update(generateMonster(visualAnswers(),state.rulesVersion),state.answers);}
  else if(formation.active){formation.stop();view.visible=true;}
- afterlife.hidden=state.screen!=='reveal'||revealPlaying;
+ afterlife.hidden=true;
  document.body.classList.toggle('monster-reveal',state.screen==='reveal'&&!parseCollectionRoute(location.hash));
  if(state.rulesVersion>=6)decoratePaperTitles(copy,{scene:state.screen==='reveal'?previewScene():undefined});
- const ledger=document.querySelector('#material-record');ledger.hidden=state.screen==='intro';
+ const ledger=document.querySelector('#material-record');ledger.hidden=state.screen!=='question';
  ledger.innerHTML=QUESTIONS.map((q,i)=>`<span class="material-sample${state.answers[q.key]?' retained':''}" title="${escape(state.answers[q.key]?labelFor(q,state.answers[q.key]):'Pending material')}">${state.answers[q.key]?`<canvas data-retained="${state.answers[q.key]}" aria-hidden="true"></canvas>`:`<span aria-hidden="true">${i+1}</span>`}</span>`).join('');
  ledger.setAttribute('aria-label',`${QUESTIONS.filter(q=>state.answers[q.key]).length} of 5 material samples retained`);
  for(const sample of ledger.querySelectorAll('canvas'))paintQuestionPaper(sample,sample.dataset.retained);
@@ -165,26 +168,26 @@ async function syncArchive(snapshot){
 async function enterReveal(next,{focus=true}={}){
  const sourceState=state,controller=new AbortController();revealController=controller;transitioning=true;revealPlaying=true;clearTimeout(advanceTimer);
  copy.querySelectorAll('button').forEach(b=>b.disabled=true);
- app.dataset.revealPhase='assembling';app.classList.add('culture-assembling');
+ app.dataset.revealPhase='assembling';app.classList.add('culture-assembling');document.body.classList.add('arrival-in-progress');window.scrollTo({top:0,behavior:'instant'});
  const finalScene=generateMonster({...next.answers,...(next.visualSeed!==null?{seed:next.visualSeed}:{})},next.rulesVersion);
+ let papers={finish(){}};
  try{
+  // The name belongs to the quiet record after landing, not a second spectacle.
+  papers=createRevealPapers({scene:finalScene,name:'',reduced});
   await formation.reveal(finalScene);
   if(controller.signal.aborted||state!==sourceState||parseCollectionRoute(location.hash))return;
   state=next;view.visible=false;view.update(finalScene,{immediate:true});view.stop();render();
-  app.dataset.revealPhase='settling';
-  if(!reduced.matches&&!document.hidden){
-   const settle=canvas.animate([{opacity:.7,transform:'translateY(-6px)'},{opacity:1,transform:'none'}],{duration:650,easing:'cubic-bezier(.2,.7,.3,1)'});
-   controller.signal.addEventListener('abort',()=>settle.cancel(),{once:true});
-   await settle.finished.catch(()=>{});
-  }
-  if(controller.signal.aborted||parseCollectionRoute(location.hash))return;
-  revealPlaying=false;app.dataset.revealPhase='complete';view.visible=true;view.update(finalScene,{immediate:true});render({focus});
-  view.react('look',{delay:700});announce(state.name+'. Observation ready.');
+  const completed=await playRevealFlight({view,app,reduced,signal:controller.signal,papers});
+  if(!completed||controller.signal.aborted||parseCollectionRoute(location.hash))return;
+  papers.finish();document.body.classList.remove('arrival-in-progress');
+  revealPlaying=false;app.dataset.revealPhase='complete';view.visible=true;view.familyDue=performance.now()+familyProfile(finalScene).pause;view.update(finalScene,{immediate:true});render({focus});
+  announce(state.name+'. Observation ready.');
  }catch(error){
   console.warn('Material formation:',error.message);
   if(!controller.signal.aborted&&!parseCollectionRoute(location.hash)){revealPlaying=false;state=next;view.visible=true;view.update(finalScene,{immediate:true});render({focus});}
  }finally{
-  if(revealController===controller){transitioning=false;answerLocked=false;revealPlaying=false;revealController=null;app.classList.remove('culture-assembling');}
+  papers.finish();
+  if(revealController===controller){transitioning=false;answerLocked=false;revealPlaying=false;revealController=null;app.classList.remove('culture-assembling');document.body.classList.remove('arrival-in-progress');}
  }
 }
 function dispatch(event,{focus=true,art=false}={}){

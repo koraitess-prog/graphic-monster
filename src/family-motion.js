@@ -60,7 +60,7 @@ export function gaitTargets(rig,profile,t,direction=1){
  return {targets,moving,dx:direction*profile.stride*2*ease(t),bounce:-4/profile.weight*Math.sin(Math.PI*u)**2*ease(t/.15)*ease((1-t)/.15),phase,u};
 }
 
-export function familyPose(scene,action='breathe',t=0,seconds=0,direction=1){
+export function familyPose(scene,action='breathe',t=0,seconds=0,direction=1,live){
  const rig=buildFamilyRig(scene),p=familyProfile(scene);t=clamp(t);const cue=expressionPerformance(action==='fall'?'gasp':action,t,scene.seed);
  // Preserve the approved four Rift actions, including their exact fitted rig.
  if(rig.rift&&['breathe','walk','jump','greet'].includes(action)){const pose=characterActionPose(scene,rig.rift,action,t,seconds*actionProfile(scene).breathPeriod/p.breathPeriod,direction);return {...pose,faceFrame:{...pose.faceFrame,cue:expressionPerformance(action==='jump'?'gasp':action==='greet'?'grin':'breathe',t,scene.seed)}};}
@@ -89,6 +89,7 @@ export function familyPose(scene,action='breathe',t=0,seconds=0,direction=1){
  const posed=new Map(),terminals=new Map();
  for(const leg of rig.legs){
   let target=gait?.targets.get(leg.id)??leg.rest.at(-1);
+  if(action==='fall'&&live)target=add(target,[live.legSwing*(leg.rest.at(-1)[0]<rig.pelvis[0]?-1:1),-live.legLift*(rig.legs.indexOf(leg)%2?.55:1)]);
   if((action==='jump'||action==='outburst')&&dy<0)target=add(target,[0,dy-(p.lift*.25)*env]);
   const chain=solveChain(leg.rest,torso(leg.rest[0]),target);posed.set(leg.id,chain);
   if(leg.terminalId)terminals.set(leg.terminalId,{limb:leg,chain,rotation:gait?.moving.includes(leg.id)?.08*Math.sin(gait.u*Math.PI*2)*direction:0});
@@ -105,9 +106,9 @@ export function familyPose(scene,action='breathe',t=0,seconds=0,direction=1){
    target=[mix(target[0],Math.max(85,Math.min(470,root[0]+side*reach)),raise),mix(target[1],root[1]-Math.min(90,arm.length*.45),raise)];roll=Math.PI*raise+wave*raise;
   }
   if(action==='fall'){
-   const raise=ease(t/.07),flap=Math.sin(seconds*8.5+i*2.1),reach=Math.min(105,arm.length*.65);
+   const material=live?.arms?.[i],raise=material?.lift??ease(t/.07),flap=material?.flap??Math.sin(seconds*8.5+i*2.1),reach=Math.min(105,arm.length*.65);
    target=[mix(target[0],root[0]+side*(reach+flap*24),raise),mix(target[1],root[1]-arm.length*(.42+.24*flap),raise)];
-   roll=raise*(side*1.8+Math.sin(seconds*10+i*1.7)*.6);
+   roll=raise*(side*1.8+(material?material.roll:Math.sin(seconds*10+i*1.7)*.6));
   }
   const chain=solveChain(arm.rest,root,target);posed.set(arm.id,chain);if(arm.terminalId)terminals.set(arm.terminalId,{limb:arm,chain,rotation:roll??angle(chain.at(-2),chain.at(-1))-angle(arm.rest.at(-2),arm.rest.at(-1))});
  }

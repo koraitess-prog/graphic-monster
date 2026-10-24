@@ -1,19 +1,36 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Paper arrival review</title>
-<link rel="stylesheet" href="../../style.css"><link rel="stylesheet" href="../../night.css"><link rel="stylesheet" href="../../interface-type.css">
-<style>body{margin:0;background:#202426}.review-controls{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:80}.review-controls button{background:#202426;color:#e8ddba;border:1px solid #69746c;padding:8px;font-size:11px;cursor:pointer}.review-controls button:focus-visible{outline:2px solid #e8ddba}#app{--fall-distance:95svh}#studio{top:64px;height:calc(100svh - 128px)}#monster{width:100%;height:100%;object-fit:contain}</style>
-<body class="reveal-playing"><main id="app" class="experience screen-reveal reveal-stage"><aside class="studio" id="studio"><div class="canvas-wrap"><canvas id="monster" aria-label="Rift arrival study" role="img"></canvas></div></aside></main>
-<nav class="review-controls" aria-label="Review animation"><button data-time="0">Formation</button><button data-time="2700">Fall</button><button data-time="6000">Heap</button><button data-time="7400">Rise</button><button id="play">Play</button></nav>
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Arrival / GRAPHIC MONSTER</title>
+<link rel="stylesheet" href="../../style.css"><link rel="stylesheet" href="../../night.css"><link rel="stylesheet" href="../../interface-type.css"><link rel="stylesheet" href="../../laboratory.css?v=arrival2">
+<style>.arrival-review{position:fixed;right:20px;bottom:18px;z-index:70;display:flex;align-items:center;gap:12px;background:#202426;padding:8px}.arrival-review select,.arrival-review button,.arrival-review a{color:#e8ddba;background:transparent;border:0;border-bottom:1px solid #69746c;padding:9px;font-size:10px;min-height:44px}.arrival-review select{max-width:150px}.arrival-in-progress .arrival-review{visibility:hidden}body{overflow-x:clip}</style>
+<body><header class="site-header"><span class="wordmark">GRAPHIC MONSTER</span></header><main id="app" class="experience screen-reveal"><aside class="studio"><div class="canvas-wrap"><canvas id="monster" role="img" aria-label="Arrival motion study"></canvas></div></aside><section class="copy"><div class="observation-identity"><span class="lab-meta">ARRIVAL / MOTION STUDY</span></div><div class="observation-toolbar"><span id="result" class="observation-log" role="status">ready</span></div></section></main>
+<nav class="arrival-review" aria-label="Arrival review"><select id="family" aria-label="Monster family"><option value="0">Crane</option><option value="1">Color</option><option value="2">Grid</option><option value="3" selected>Accordion / Rift</option><option value="4">Typography</option><option value="5">Shape</option><option value="6">Texture</option><option value="7">Knot</option></select><button id="replay">Replay</button><a href="../../">App</a></nav>
+<style>.arrival-review{max-width:calc(100vw - 32px);flex-wrap:wrap;justify-content:flex-end}.study-poses{display:flex;width:100%;justify-content:flex-end;gap:12px}.arrival-inspection .site-header,.arrival-inspection .observation-identity,.arrival-inspection .observation-toolbar{visibility:hidden}</style>
 <script type="module">
 import {generateMonster,combinations} from '../../src/dna.js';
-import {MonsterRenderer} from '../../src/renderer.js?v=arrival1';
+import {CreatureView} from '../../src/renderer.js?v=laboratory1';
+import {PaperFormation} from '../../src/paper-formation.js?v=workbench1';
+import {playRevealFlight} from '../../src/reveal-flight.js?v=arrival2';
+import {createRevealPapers} from '../../src/reveal-papers.js?v=arrival2';
+import {arrivalBeat,ARRIVAL_DISTANCE} from '../../src/arrival.js?v=arrival2';
 import {arrivalPose} from '../../src/arrival-pose.js';
-import {arrivalBeat,ARRIVAL_DISTANCE} from '../../src/arrival.js?v=paperfall2';
-import {playRevealFlight} from '../../src/reveal-flight.js';
-import {createRevealPapers} from '../../src/reveal-papers.js';
-const scene=generateMonster({...combinations()[15],seed:3},6),canvas=document.querySelector('#monster'),app=document.querySelector('#app'),studio=document.querySelector('#studio'),renderer=new MonsterRenderer(canvas,{scale:1.5,background:'#202426'}),reduced=matchMedia('(prefers-reduced-motion: reduce)');renderer.ground=false;
-let papers,controller;
-function still(ms){controller?.abort();papers?.finish();papers=createRevealPapers({scene,name:'Rift',reduced,manual:true});const beat=arrivalBeat(ms),distance=Math.max(600,innerHeight*ARRIVAL_DISTANCE);app.style.setProperty('--fall-distance',distance+'px');renderer.draw(arrivalPose(scene,beat,ms));studio.style.transform=`translateY(${beat.drop*distance}px) rotate(${beat.tilt}deg)`;window.scrollTo({top:beat.camera*distance,behavior:'instant'});if(ms===0)papers.assembly(1550);else papers.flight(ms,beat);}
-document.querySelectorAll('[data-time]').forEach(b=>b.addEventListener('click',()=>still(Number(b.dataset.time))));
-document.querySelector('#play').addEventListener('click',async()=>{controller?.abort();papers?.finish();controller=new AbortController();papers=createRevealPapers({scene,name:'Rift',reduced,manual:true});await playRevealFlight({view:{target:scene,renderer,stop(){}},app,reduced,signal:controller.signal,papers});});
-still(2700);
+const app=document.querySelector('#app'),canvas=document.querySelector('#monster'),family=document.querySelector('#family'),replay=document.querySelector('#replay'),reduced=matchMedia('(prefers-reduced-motion:reduce)');
+const makeScene=()=>generateMonster({...combinations()[15],seed:Number(family.value)},6);
+let scene=makeScene(),view=new CreatureView(canvas,scene),formation=new PaperFormation(view),controller,studyPapers,completion=Promise.resolve();
+const study=document.createElement('div');study.className='study-poses';study.innerHTML='<button data-frame="0">Suspension</button><button data-frame="2900">Fall</button><button data-frame="5550">Contact</button><button data-frame="7900">Rise</button>';document.querySelector('.arrival-review').append(study);
+study.addEventListener('click',async e=>{
+ const button=e.target.closest('[data-frame]');if(!button)return;controller?.abort();await completion;studyPapers?.finish();formation.stop();view.stop();view.visible=false;scene=makeScene();
+ const ms=Number(button.dataset.frame),beat=arrivalBeat(ms,'look',2800,scene),distance=Math.max(600,innerHeight*ARRIVAL_DISTANCE),studio=app.querySelector('.studio');
+ document.body.classList.add('arrival-inspection');view.renderer.ground=false;view.renderer.draw(arrivalPose(scene,beat,ms));
+ studio.style.transform=`translate(${(beat.drift??0)*studio.clientWidth*(scene.seed%2?1:-1)}px,${(beat.drop-beat.camera)*distance}px) rotate(${beat.tilt*(scene.seed%2?1:-1)}deg)`;studio.style.transformOrigin='50% 86%';
+ studyPapers=createRevealPapers({scene,name:'',reduced,manual:true});studyPapers.assembly?.(2100);studyPapers.flight(ms,beat,beat.camera*distance);
+});
+async function run(){
+ if(controller)return;controller=new AbortController();const current=controller;let papers={finish(){}};
+ studyPapers?.finish();document.body.classList.remove('arrival-inspection');app.querySelector('.studio').style.removeProperty('transform');app.querySelector('.studio').style.removeProperty('transform-origin');
+ family.disabled=true;replay.disabled=true;scene=makeScene();document.body.classList.add('arrival-in-progress');app.dataset.revealPhase='assembling';window.scrollTo({top:0,behavior:'instant'});
+ try{
+  formation.update(scene,scene.answers);formation.setVisible(true);papers=createRevealPapers({scene,name:'',reduced});await formation.reveal(scene);
+  view.visible=false;view.update(scene,{immediate:true});view.stop();await playRevealFlight({view,app,reduced,signal:current.signal,papers});
+ }finally{papers.finish();document.body.classList.remove('arrival-in-progress');app.dataset.revealPhase='complete';document.querySelector('#result').textContent=scene.anatomy+' / observation ready';view.visible=true;view.update(scene,{immediate:true});family.disabled=false;replay.disabled=false;controller=null;}
+}
+replay.addEventListener('click',()=>completion=run());family.addEventListener('change',()=>completion=run());completion=run();
 </script></body></html>
