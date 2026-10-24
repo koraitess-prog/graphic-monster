@@ -1,5 +1,5 @@
 import {mountIntroLettering} from './intro-lettering.js';
-import {mountCreatureName} from './creature-lettering.js';
+import {mountCreatureName} from './creature-lettering.js?v=arrival1';
 import {mountLivingTitle} from './living-title.js';
 const stocks=['#e6ddc5','#c9bb9b','#d6a333','#dcd3bc','#b7a4b8','#e6ddc5'];
 export function decoratePaperTitles(root=document,{scene}={}){
