@@ -5,6 +5,7 @@ import {rng} from './anidoodle-kit.js';
 import {tornContour} from './paper-library.js';
 import {engravingTile} from './engraving.js';
 const stocks=['#e8ddba','#d6a333','#519f7d','#ce6587','#5765c4'];
+export const CREATURE_LETTER_FONT='900 112px Georgia, "Times New Roman", serif';
 export function nameLines(text,limit=16){
  const lines=[];let line='';
  for(const word of text.split(' ')){
@@ -14,18 +15,20 @@ export function nameLines(text,limit=16){
  }
  if(line)lines.push(line);return lines;
 }
-export function paintCreatureName(canvas,text){
+export function paintCreatureName(canvas,text,{align='left',texturePhase=0}={}){
  const factory=(w,h)=>{const c=document.createElement('canvas');c.width=Math.ceil(w);c.height=Math.ceil(h);return c;};
- const lines=nameLines(text),font='900 112px Georgia, "Times New Roman", serif',measure=canvas.getContext('2d');measure.font=font;
+ const lines=nameLines(text),font=CREATURE_LETTER_FONT,measure=canvas.getContext('2d');measure.font=font;
  const widths=lines.map(l=>measure.measureText(l).width),width=Math.ceil(Math.max(1,...widths)+20),height=lines.length*138;
  canvas.width=width;canvas.height=height;canvas.style.aspectRatio=`${width}/${height}`;
  const g=canvas.getContext('2d'),random=rng([...text].reduce((n,c)=>Math.imul(n,31)+c.codePointAt(0)|0,817)),plates=new Map();
- const pigment=(i,pattern)=>{const key=`${i}/${pattern}`;if(!plates.has(key)){const {tile}=engravingTile(factory,{color:stocks[i%stocks.length],texture:.8,printRevision:3,grainPhase:i,paperPattern:pattern});const p=g.createPattern(tile,'repeat');p.setTransform({a:.4,b:0,c:0,d:.4,e:i*13,f:i*17});plates.set(key,p);}return plates.get(key);};
+ const patterns=['newsprint','checks','stripes-wave','magazine-type','dots-large'];
+ const pigment=(i,pattern)=>{const print=texturePhase?patterns[(i+texturePhase-1)%patterns.length]:pattern,key=`${i}/${print}`;if(!plates.has(key)){const {tile}=engravingTile(factory,{color:stocks[i%stocks.length],texture:.8,printRevision:3,grainPhase:(i+texturePhase*3)%12,grainAngle:texturePhase*13,paperPattern:print});const p=g.createPattern(tile,'repeat');p.setTransform({a:.4,b:0,c:0,d:.4,e:i*13+texturePhase*31,f:i*17-texturePhase*23});plates.set(key,p);}return plates.get(key);};
  lines.forEach((line,row)=>{
-  const mask=factory(width,138),m=mask.getContext('2d');m.font=font;m.textBaseline='alphabetic';m.fillStyle='#fff';m.fillText(line,10,111);
+  const origin=align==='center'?(width-widths[row])/2:10;
+  const mask=factory(width,138),m=mask.getContext('2d');m.font=font;m.textBaseline='alphabetic';m.fillStyle='#fff';m.fillText(line,origin,111);
   const paint=factory(width,138),p=paint.getContext('2d');p.fillStyle=pigment(row);p.fillRect(0,0,width,138);
   // Unequal seams across the lettering, with whole letters between constructions.
-  let x=10;for(const char of Array.from(line)){
+  let x=origin;for(const char of Array.from(line)){
    m.font=font;const w=m.measureText(char).width,assembled=random()>.43,index=Math.floor(random()*5);
    p.fillStyle=pigment(index);p.fillRect(x,0,w,138);
    if(assembled){const y=37+random()*29,ps=tornContour([[x-1,y+17],[x+w+1,y],[x+w+1,128],[x-1,128]],index+row,.7);p.beginPath();ps.forEach((q,i)=>i?p.lineTo(...q):p.moveTo(...q));p.closePath();p.fillStyle=pigment((index+2)%5,index===2?'newsprint':undefined);p.fill();}
@@ -37,8 +40,8 @@ export function paintCreatureName(canvas,text){
   g.drawImage(paint,0,row*138);
  });
 }
-export function mountCreatureName(title){
+export function mountCreatureName(title,options={}){
  const text=title.textContent;if(!text.trim())return;title.dataset.paperLetters='true';title.classList.add('creature-lettering');
  const accessible=document.createElement('span');accessible.className='sr-only';accessible.textContent=text;
- const canvas=document.createElement('canvas');canvas.setAttribute('aria-hidden','true');title.replaceChildren(accessible,canvas);paintCreatureName(canvas,text);
+ const canvas=document.createElement('canvas');canvas.setAttribute('aria-hidden','true');title.replaceChildren(accessible,canvas);paintCreatureName(canvas,text,options);
 }

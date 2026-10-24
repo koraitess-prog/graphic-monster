@@ -168,3 +168,58 @@ body.intro-paper,html:has(body.intro-paper){background:#101313;color:#e8ddba}
 .collection-heading .creature-lettering canvas{width:calc(100% - 54px);flex:1;min-width:0;max-height:none}
 .collection-heading .collection-count{flex:none}
 @media(max-width:680px){.collection-heading .creature-lettering{width:100%;font-size:44px;gap:14px}}
+
+/* Intro: only the illustrated title and a quiet name field. */
+.intro-paper .site-header{display:none}
+.intro-paper .screen-intro{min-height:100svh}
+.intro-paper .screen-intro .name-form{display:block;width:min(300px,80vw);margin:28px auto 0;text-align:center}
+.intro-paper .screen-intro .name-form input{width:100%;border:0;background:transparent;text-align:center;font:400 18px/1.6 'IBM Plex Mono',monospace!important;padding:12px 0;box-shadow:none;border-radius:0}
+.intro-paper .screen-intro .name-form input::placeholder{font:400 18px/1.6 'IBM Plex Mono',monospace!important}
+.intro-paper .screen-intro .name-form input:focus-visible{outline:none;caret-color:#e8ddba}
+.intro-paper .screen-intro .name-form input:focus-visible::placeholder{color:#e8ddba}
+
+/* Keep the question anchored; let the visitor decide when to continue. */
+@media(min-width:681px){.screen-question .copy{min-height:540px;display:flex;flex-direction:column;justify-content:flex-start}.screen-question .question-title{min-height:2.24em}.screen-question .question-footer{margin-top:auto}.screen-question .choices.two{min-height:260px}}
+.study-gesture{transform-box:fill-box;transform-origin:center;animation-duration:3.8s;animation-delay:calc(var(--piece)*-.18s);animation-iteration-count:infinite}
+.study-precise{animation-name:measured-step;animation-timing-function:cubic-bezier(.5,0,.5,1)}
+.study-playful{animation-name:restless-step;animation-timing-function:cubic-bezier(.22,.7,.2,1)}
+@keyframes measured-step{0%,20%,80%,100%{transform:translateY(0)}40%,60%{transform:translateY(-9px)}}
+@keyframes restless-step{0%,15%,100%{transform:translate(0,0) rotate(0)}30%{transform:translate(-3px,-16px) rotate(-11deg)}43%{transform:translate(3px,3px) rotate(8deg)}60%{transform:translate(0,-5px) rotate(-4deg)}75%{transform:translate(0,0) rotate(0)}}
+/* A reveal that fits the phone: name, creature, then the two remaining actions. */
+@media(max-width:680px){
+ .screen-question .canvas-wrap{height:clamp(150px,27svh,240px)}
+ .screen-question .question-title{font-size:28px;min-height:2.24em}
+ .screen-question .question-footer{margin-top:12px}
+ .screen-reveal{height:calc(100svh - 64px);min-height:500px;display:grid;grid-template-rows:100px minmax(0,1fr) 70px;padding:0 20px 12px}
+ .screen-reveal .copy{display:contents;position:static;pointer-events:auto}
+ .screen-reveal .reveal-name,.screen-reveal .creature-lettering{position:static;grid-row:1;grid-column:1;width:100%;max-width:100%;margin:8px 0 0;align-self:start}
+ .screen-reveal .creature-lettering canvas{max-height:92px;object-position:center}
+ .screen-reveal .studio{position:relative;inset:auto;grid-row:2;grid-column:1;width:100%;height:100%;min-height:0;align-self:stretch;pointer-events:auto}
+ .screen-reveal .canvas-wrap{height:100%}
+ .screen-reveal .poster-actions{position:static;grid-row:3;grid-column:1;width:100%;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:30px;padding:0;margin:0}
+ .poster-actions .visit-archive{border:0}
+ .afterlife{padding-top:20px}
+}
+@media(prefers-reduced-motion:reduce){.study-gesture{animation:none}}
+.material-transfer{position:fixed;z-index:30;pointer-events:none;transform-origin:center}.material-transfer svg{display:block;width:100%;height:100%}.material-transfer .study-gesture{animation:none}
+@media(max-width:680px){.screen-reveal{grid-template-columns:minmax(0,1fr)}.screen-reveal .poster-actions{flex-wrap:nowrap}.screen-reveal .poster-actions .text-button{flex:none;white-space:nowrap}}
+.screen-question .decision-status .text-button{display:flex;align-items:center;gap:12px}.screen-question .finish-label{font:11px/1.4 var(--type-interface)}
+.creature-dossier{min-height:0;align-items:center}
+.dossier-art{height:min(66svh,700px);min-height:360px}
+.dossier-story summary{cursor:pointer;line-height:1.7;list-style-position:outside}
+.dossier-story summary:focus-visible{outline:2px solid var(--accent);outline-offset:6px}
+.dossier-story p{margin:12px 0 0;font:inherit;line-height:inherit}
+@media(max-width:680px){.dossier-art{height:clamp(300px,48svh,420px);min-height:0}.dossier-story summary{margin-left:14px}}
+
+/* The title is the archive's primary action. */
+.archive-page .site-header{display:none}
+.archive-page .collection-screen{padding-top:clamp(32px,6svh,72px);min-height:100svh}
+.archive-intro{width:100%;max-width:1000px;margin:0 auto 40px;text-align:center}
+.archive-create-heading{margin:0;display:block;font-size:inherit}
+.archive-create-title{display:block;width:100%;padding:8px 0;border:0;border-radius:0;background:none;color:#f5f1e8;cursor:pointer}
+.archive-create-lettering.creature-lettering{display:block;width:100%;max-width:none}
+.archive-create-lettering canvas{display:block;width:100%;height:auto;max-height:none;object-position:center}
+.archive-create-title:focus-visible{outline:2px solid #e8ddba;outline-offset:10px}
+.archive-intro .archive-label{margin:26px 0 0;font:400 16px/1.6 'IBM Plex Mono',monospace!important;letter-spacing:.14em;color:#f5f1e8;text-align:center}
+.collection-error{font:12px/1.6 var(--type-interface);color:#d7ab87;margin:0 0 24px}
+@media(max-width:680px){.archive-intro{margin-bottom:26px}.archive-intro .archive-label{margin:20px 0 0;font-size:13px!important}}

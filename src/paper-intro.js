@@ -1,6 +1,6 @@
 import {engravingTile} from './engraving.js';
 import {scatterImpulse,advancePaper} from './paper-scatter.js';
-import {tornContour} from './paper-library.js';
+import {introScrapPoints,makeIntroPile,scrapNames} from './intro-scraps.js';
 const cover=document.querySelector('#paper-cover');
 if(cover){
  const canvas=cover.querySelector('canvas'),ctx=canvas.getContext('2d'),skip=cover.querySelector('button'),media=matchMedia('(prefers-reduced-motion: reduce)');
@@ -8,10 +8,11 @@ if(cover){
  const factory=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;};
  const palette=['#d8cfb4','#e8ddba','#ce6587','#f05226','#519f7d','#5765c4','#d6a333','#b5a0c6'];
  const kinds=['newsprint','magazine-type','oversized-type','checks','stripes-diagonal','dots-large','stripes-wave',null];
- const sprites=palette.map((color,i)=>{
-  const w=320,h=256,c=factory(w,h),g=c.getContext('2d'),{tile,transform}=engravingTile(factory,{color,texture:.3,printRevision:3,grainPhase:i%2,grainAngle:0,paperPattern:kinds[i]});
+ const sprites=Array.from({length:16},(_,i)=>{
+  const color=palette[(i*3+Math.floor(i/8))%palette.length];
+  const w=320,h=256,c=factory(w,h),g=c.getContext('2d'),{tile,transform}=engravingTile(factory,{color,texture:.3,printRevision:3,grainPhase:i%4,grainAngle:i%3*19,paperPattern:kinds[(i*5)%kinds.length]});
   const p=g.createPattern(tile,'repeat');p.setTransform(transform);
-  g.beginPath();tornContour([[3,7],[w*.32,1],[w-4,6],[w-1,h*.43],[w-7,h-2],[w*.61,h-6],[2,h-1],[6,h*.55]],i,2.1).forEach(([x,y],j)=>j?g.lineTo(x,y):g.moveTo(x,y));g.closePath();g.fillStyle=p;g.fill();
+  g.beginPath();introScrapPoints(i,w,h).forEach(([x,y],j)=>j?g.lineTo(x,y):g.moveTo(x,y));g.closePath();g.fillStyle=p;g.fill();
   // A second large printed clipping, rather than a uniform wallpaper texture.
   if(i===1||i===2){g.save();g.clip();g.fillStyle='#151a1b';g.font=i===1?'900 132px Georgia':'900 124px Arial';g.fillText(i===1?'Aa':'FORM',-12,196);g.restore();}
   return c;
@@ -29,10 +30,7 @@ if(cover){
   if(cleared||cover.hidden)return;
   width=innerWidth;height=innerHeight;const dpr=Math.min(1.5,devicePixelRatio||1);canvas.width=Math.ceil(width*dpr);canvas.height=Math.ceil(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
   finishing=false;cover.style.pointerEvents='';
-  const cols=Math.ceil(width/(width<650?110:170))+2,rows=Math.ceil(height/(width<650?100:135))+2,sx=width/(cols-2),sy=height/(rows-2);
-  papers=[];for(let y=-1;y<rows-1;y++)for(let x=-1;x<cols-1;x++){const i=(y+1)*cols+x+1;papers.push({x:(x+.5)*sx,y:(y+.5)*sy,w:sx*1.9,h:sy*1.95,angle:Math.sin(i*9)*.22,stock:(i*7+Math.floor(i/cols)*3)%sprites.length,vx:0,vy:0,spin:0,awake:false,gone:false});}
-  // A reproducible shuffle supplies the loose, overlapping pile.
-  papers.sort((a,b)=>Math.sin(a.x*4+a.y)-Math.sin(b.x*4+b.y));draw();cover.dataset.ready='true';cover.dataset.remaining=String(papers.length);
+  papers=makeIntroPile(width,height);draw();cover.dataset.ready='true';cover.dataset.remaining=String(papers.length);cover.dataset.silhouettes=scrapNames.join(',');
  }
  function frame(now){
   if(cleared||document.hidden){raf=0;last=0;return;}

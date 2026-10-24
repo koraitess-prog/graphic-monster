@@ -5,11 +5,12 @@ import {evolutionScene,amorphousScene} from './evolution.js';
 import {CreatureView} from './renderer.js?v=mobile2';
 import {initialState,reducer,restoreState,normalizeName} from './state.js';
 import {visualChoice} from './samples.js';
-import {createPoster} from './poster.js';
 import {loadPaintTiles} from './paint-cache.js?v=mobile2';
 import {displayFamily} from './typography.js';
 import {drawWordmark} from './wordmark.js';
 import {openArchive,makeRecord,mergeRecord} from './archive.js?v=mobile2';
+import {SharedArchive,combineArchives} from './shared-archive.js';
+import {archiveConfig} from './archive-config.js';
 import {CollectionScreen,parseCollectionRoute} from './collection-screen.js?v=mobile2';
 import {decoratePaperTitles} from './paper-titles.js';
 
@@ -25,6 +26,7 @@ const labelFor=(q,value)=>q.options.find(o=>o[0]===value)?.[1];
 const complete=()=>QUESTIONS.every(q=>state.answers[q.key]);
 let state=initialState(),advanceTimer,renameFocus,transitioning=false;
 let archiveDB,records=[],archiveFailure='',archiveQueue=Promise.resolve();
+const sharedArchive=new SharedArchive(archiveConfig);let sharedRecords=[],refreshingArchive=false;
 const afterlife=document.querySelector('#afterlife');
 const collection=new CollectionScreen(document.querySelector('#collection-screen'),{back:()=>returnToExperience(),create:()=>{returnToExperience();dispatch({type:'RESET'},{art:true});},open:id=>{location.hash=id?'creature='+encodeURIComponent(id):'archive';}});
 try{state=restoreState(sessionStorage.getItem(storageKey)??sessionStorage.getItem('design-monsters:experience:v1'));}catch{}
@@ -56,20 +58,20 @@ function render({focus=false,selection=false}={}){
  headerName.hidden=state.screen!=='question';headerName.textContent=state.name;headerName.setAttribute('aria-label',`Edit ${state.name}’s name`);
  caption.textContent='';
  if(state.screen==='intro'){
-   copy.innerHTML=`${state.rulesVersion>=4?'<h1 class="intro-title paper-title" tabindex="-1">GRAPHIC<br>MONSTER</h1>':'<h1 class="intro-title furry-title" tabindex="-1"><span class="sr-only">GRAPHIC MONSTER</span><canvas id="title-art" aria-hidden="true"></canvas></h1>'}<form id="create-form" class="name-form"><label class="sr-only" for="monster-name">Name</label><input id="monster-name" name="monsterName" placeholder="Name" value="${escape(state.name)}" required maxlength="48" autocomplete="off" dir="auto"><button class="name-submit" type="submit" aria-label="Start"><span aria-hidden="true">→</span></button></form>`;
+   copy.innerHTML=`${state.rulesVersion>=4?'<h1 class="intro-title paper-title" tabindex="-1">GRAPHIC<br>MONSTER</h1>':'<h1 class="intro-title furry-title" tabindex="-1"><span class="sr-only">GRAPHIC MONSTER</span><canvas id="title-art" aria-hidden="true"></canvas></h1>'}<form id="create-form" class="name-form"><label class="sr-only" for="monster-name">Name</label><input id="monster-name" name="monsterName" placeholder="Name" value="${escape(state.name)}" required maxlength="48" autocomplete="off" enterkeyhint="go" dir="auto"></form>`;
    if(copy.querySelector('#title-art'))drawWordmark(copy.querySelector('#title-art'));
    document.querySelector('#stage-note').textContent='';
    canvas.setAttribute('aria-label','An amorphous living painting. No face or limbs yet.');
  }else if(state.screen==='question'){
    const q=QUESTIONS[state.step],selected=state.answers[q.key];
-   copy.innerHTML=`<div class="question-top"><span class="counter">0${state.step+1} <span>/ 05</span></span><button type="button" class="text-button" data-action="back" aria-label="Back"><span aria-hidden="true">←</span></button></div><h1 class="question-title" tabindex="-1">${q.title.replace('\n',' ')}</h1><div class="choices ${q.options.length===5?'five':'two'}" role="group" aria-label="${q.title.replace('\n',' ')}">${q.options.map(answer).join('')}</div><div class="question-footer">${progress()}<div class="decision-status">${selected?`<button type="button" class="text-button" data-action="next" aria-label="${complete()?'Finish':'Next'}"><span aria-hidden="true">→</span></button>`:''}</div></div>`;
+   copy.innerHTML=`<div class="question-top"><span class="counter">0${state.step+1} <span>/ 05</span></span><button type="button" class="text-button" data-action="back" aria-label="Back"><span aria-hidden="true">←</span></button></div><h1 class="question-title" tabindex="-1">${q.title.replace('\n',' ')}</h1><div class="choices ${q.options.length===5?'five':'two'}" role="group" aria-label="${q.title.replace('\n',' ')}">${q.options.map(answer).join('')}</div><div class="question-footer">${progress()}<div class="decision-status">${selected?`<button type="button" class="text-button" data-action="next" aria-label="${complete()?'Create and share':'Next'}">${complete()?'<span class="finish-label">Create &amp; share</span>':'<span class="sr-only">Next</span>'}<span aria-hidden="true">→</span></button>`:''}</div></div>`;
    document.querySelector('#stage-note').textContent='';
    canvas.setAttribute('aria-label',`${state.name}, evolving through your design decisions. ${QUESTIONS.filter(q=>state.answers[q.key]).map(q=>labelFor(q,state.answers[q.key])).join(', ')}.`);
  }else{
    state=reducer(state,{type:'REVEAL'});
    const story=state.story.text;
    const nameSize=state.name.length>32?64:state.name.length>17?94:state.name.length>9?128:174;
-   copy.innerHTML=`<h1 class="reveal-name" style="--name-size:${nameSize}px" tabindex="-1" dir="auto">${escape(state.name)}</h1><div class="poster-actions"><button type="button" class="primary" data-action="export">Download PNG <span aria-hidden="true">↓</span></button><button type="button" class="text-button visit-archive" data-action="archive">Visit the Archive <span aria-hidden="true">↗</span></button><button type="button" class="text-button" data-action="reset">New monster</button><p id="export-status" class="export-status" role="status"></p></div>`;
+   copy.innerHTML=`<h1 class="reveal-name" style="--name-size:${nameSize}px" tabindex="-1" dir="auto">${escape(state.name)}</h1><div class="poster-actions"><button type="button" class="text-button visit-archive" data-action="archive">Archive <span aria-hidden="true">↗</span></button><button type="button" class="text-button" data-action="reset">New monster</button></div>`;
    fitRevealName();
    document.querySelector('#full-story').innerHTML=`<p class="personality" aria-live="polite" aria-atomic="true">${escape(story)}</p><button type="button" class="another-story text-button" data-action="story">New description</button>`;
    void syncArchive(structuredClone(state));
@@ -105,15 +107,43 @@ async function routeCollection(){
  const route=parseCollectionRoute(location.hash);
  if(!route){collection.close();app.hidden=false;render();if(state.screen!=='question')view.setVisible(true);return;}
  document.body.classList.remove('intro-paper');
+ window.dispatchEvent(new CustomEvent('graphic-monster:intro',{detail:false}));
  clearTimeout(advanceTimer);formation.stop();app.hidden=true;afterlife.hidden=true;headerName.hidden=true;view.setVisible(false);
  document.querySelector('.header-actions [data-action="archive"]').hidden=true;
- collection.show(route,records,archiveFailure);
- if(archiveDB){try{await archiveQueue;const saved=await archiveDB.list();if(location.hash===route.hash){records=saved;collection.show(route,records,archiveFailure);}}catch{}}
+ collection.show(route,records,archiveFailure,sharedRecords.length);
+ await refreshArchive();
 }
+async function refreshArchive(){
+ if(refreshingArchive)return;refreshingArchive=true;
+ try{
+  await archiveQueue;
+  let local=records;
+  if(archiveDB)try{local=await archiveDB.list();}catch(error){console.warn('Local archive:',error.message);}
+  sharedRecords=await sharedArchive.list();archiveFailure='';
+  for(const record of local){
+   const published=sharedRecords.find(r=>r.id===record.id);
+   if(record.createdAt>=archiveConfig.enabledAt&&(!published||JSON.stringify(published.story)!==JSON.stringify(record.story))){
+    try{await sharedArchive.save(record);sharedRecords=combineArchives(sharedRecords,[record]);}
+    catch{archiveFailure='Saved here. Sharing unavailable; reopen Archive to retry.';}
+   }
+  }
+  records=combineArchives(local,sharedRecords);
+ }catch(error){console.warn('Shared archive:',error.message);archiveFailure='Shared archive unavailable. Showing saved creatures.';}
+ finally{refreshingArchive=false;}
+ const route=parseCollectionRoute(location.hash);if(route)collection.show(route,records,archiveFailure,sharedRecords.length);
+}
+// Refresh only while the collection is visible, without interrupting a specimen.
+setInterval(()=>{if(!document.hidden&&location.hash==='#archive')void refreshArchive();},30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&parseCollectionRoute(location.hash))void refreshArchive();});
 async function syncArchive(snapshot){
  const incoming=makeRecord(snapshot),existing=records.find(r=>r.id===incoming.id);
  const record=mergeRecord(existing,incoming);records=existing?records.map(r=>r.id===record.id?record:r):[record,...records];
- archiveQueue=archiveQueue.then(async()=>{if(!archiveDB)return;try{await archiveDB.save(record);}catch{archiveFailure='This creature could not be saved. Your existing collection is retained.';}});await archiveQueue;
+ archiveQueue=archiveQueue.then(async()=>{
+  let localSaved=false;
+  if(archiveDB)try{await archiveDB.save(record);localSaved=true;}catch{}
+  try{await sharedArchive.save(record);archiveFailure='';}
+  catch(error){console.warn('Shared archive save:',error.message);archiveFailure=localSaved?'Saved here. Sharing unavailable; retry from Archive.':'This creature could not be saved. Your existing collection is retained.';}
+ });await archiveQueue;
 }
 function artRect(){const r=canvas.getBoundingClientRect(),scale=Math.min(r.width/600,r.height/760);return {x:r.left+r.width/2,y:r.top+r.height/2,scale};}
 async function enterReveal(next,{focus=true}={}){
@@ -133,9 +163,21 @@ function dispatch(event,{focus=true,art=false}={}){
 }
 function choose(value){
  if(transitioning)return;
- const editing=complete();clearTimeout(advanceTimer);state=reducer(state,{type:'SELECT',value});const q=QUESTIONS[state.step];render({selection:true});announce(`${labelFor(q,value)} selected. ${feedback[state.step]}`);
- // Leave time for the selected material and arrangement to settle before advancing.
- advanceTimer=setTimeout(()=>{dispatch({type:editing?'REVEAL':'ADVANCE'});announce(state.screen==='reveal'?`${state.name} observed.`:`Decision ${state.step+1} of five. ${QUESTIONS[state.step].title.replace('\n',' ')}`);},reduced.matches?650:2300);
+ transferMaterial(copy.querySelector(`[data-value="${value}"] .choice-art`));
+ clearTimeout(advanceTimer);state=reducer(state,{type:'SELECT',value});const q=QUESTIONS[state.step];render({selection:true});announce(`${labelFor(q,value)} selected. ${feedback[state.step]}`);
+}
+function transferMaterial(source){
+ if(!source||reduced.matches||document.hidden)return;
+ const start=source.getBoundingClientRect(),target=canvas.getBoundingClientRect(),fragment=source.cloneNode(true);
+ fragment.className='material-transfer';fragment.setAttribute('aria-hidden','true');
+ Object.assign(fragment.style,{left:`${start.left}px`,top:`${start.top}px`,width:`${start.width}px`,height:`${start.height}px`});
+ // Repeated SVG clip ids must stay local to the travelling copy.
+ const prefix=`flight-${crypto.randomUUID()}-`;
+ fragment.querySelectorAll('[id]').forEach(el=>{const id=el.id;fragment.querySelectorAll('[clip-path]').forEach(p=>{if(p.getAttribute('clip-path')===`url(#${id})`)p.setAttribute('clip-path',`url(#${prefix}${id})`);});el.id=prefix+id;});
+ document.body.append(fragment);
+ const dx=target.left+target.width/2-start.left-start.width/2,dy=target.top+target.height*.46-start.top-start.height/2;
+ const motion=fragment.animate([{transform:'translate(0,0) scale(1)',opacity:.85},{transform:`translate(${dx*.65}px,${dy*.65-20}px) scale(.65)`,opacity:.9,offset:.65},{transform:`translate(${dx}px,${dy}px) scale(.15)`,opacity:0}],{duration:950,easing:'cubic-bezier(.25,.65,.25,1)'});
+ motion.finished.catch(()=>{}).finally(()=>fragment.remove());
 }
 function openRename(){if(state.screen==='reveal')return;clearTimeout(advanceTimer);renameFocus=document.activeElement;const input=document.querySelector('#edit-monster-name');input.value=state.name;input.setCustomValidity('');dialog.showModal();input.focus();input.select();}
 function checkName(input){const name=normalizeName(input.value);input.setCustomValidity(name?'':'Enter a name.');return input.reportValidity()?name:null;}
@@ -157,7 +199,6 @@ document.addEventListener('click',event=>{
   case'story':dispatch({type:'REGENERATE',seed:freshSeed()},{focus:false});announce('A new story for the same creature.');document.querySelector('[data-action="story"]').focus({preventScroll:true});break;
 
   case'reset':dispatch({type:'RESET'},{art:true});copy.querySelector('#monster-name')?.focus({preventScroll:true});break;
-  case'export':void exportCreature();break;
  }
 });
 copy.addEventListener('keydown',event=>{
@@ -168,16 +209,5 @@ copy.addEventListener('keydown',event=>{
 });
 document.querySelector('.wordmark').addEventListener('click',event=>{event.preventDefault();if(parseCollectionRoute(location.hash)){returnToExperience();return;}if(state.screen!=='reveal')dispatch({type:'HOME'},{art:true});});
 window.addEventListener('hashchange',()=>{if(parseCollectionRoute(location.hash)||!collection.root.hidden){void routeCollection();return;}if(state.screen==='reveal'){save();return;}if(applyHash()){clearTimeout(advanceTimer);render({focus:true});view.update(previewScene());}});
-async function exportCreature(){
- const button=copy.querySelector('[data-action="export"]'),note=document.querySelector('#export-status'),snapshot=structuredClone(state);button.disabled=true;note.textContent='Preparing…';
- try{
-  snapshot.scene=view.target;
-  const {canvas:poster}=createPoster(snapshot);
-  const blob=await new Promise((resolve,reject)=>poster.toBlob(b=>b?resolve(b):reject(new Error('PNG export failed')),'image/png'));
-  const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;
-  const filename=snapshot.name.normalize('NFKC').replace(/[^\p{L}\p{N}._-]+/gu,'-').replace(/^[.-]+|[.-]+$/g,'').slice(0,70)||'creature';
-  link.download=`graphic-monster-${filename}-${encodeDNA(snapshot.answers)}.png`;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);note.textContent='Saved.';announce('Your PNG includes your creature, its name, and its story.');
- }catch{note.textContent='Couldn’t save. Try again.';}finally{button.disabled=false;}
-}
 document.querySelector('.header-actions [data-action="archive"]').disabled=false;
 render();if(parseCollectionRoute(location.hash))void routeCollection();
