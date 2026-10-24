@@ -254,5 +254,6 @@ body.intro-paper,html:has(body.intro-paper){background:#101313;color:#e8ddba}
 .reveal-air .canvas-wrap,.screen-reveal.reveal-stage .canvas-wrap{height:100%;width:100%}
 .screen-reveal.reveal-stage{height:calc(100svh + var(--fall-distance,0px));min-height:100svh;display:block;padding:0}
 .arrival-ground{position:absolute;left:50%;width:clamp(90px,20vw,230px);height:9px;transform:translate(-50%,-50%);border-radius:50%;background:#101515;opacity:0;pointer-events:none;z-index:3}
+.reveal-paper-theatre{position:fixed;inset:0;width:100vw;height:100svh;pointer-events:none;z-index:40}
 @media(max-width:680px){.screen-question .question-title{font-size:25px}.screen-reveal{padding:0 18px;grid-template-rows:58px minmax(0,1fr) 64px}.screen-reveal .reveal-name,.screen-reveal .creature-lettering{width:min(190px,58vw);font-size:32px!important}.screen-reveal .creature-lettering canvas{max-height:34px}.monster-reveal .afterlife{padding-inline:22px}.monster-reveal .full-story .personality{font-size:12px}.reveal-air .studio,.screen-reveal.reveal-stage .studio{top:58px;height:calc(100svh - 122px)}}
 @media(prefers-reduced-motion:reduce){.screen-question .choice:disabled{transition:none}}

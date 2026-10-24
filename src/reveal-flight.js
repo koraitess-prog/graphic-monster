@@ -1,11 +1,12 @@
-import {arrivalBeat,ARRIVAL_GESTURE_AT} from './arrival.js';
-import {familyPose,familyProfile,supportsFamilyMotion} from './family-motion.js';
+import {arrivalBeat,ARRIVAL_GESTURE_AT,ARRIVAL_DISTANCE} from './arrival.js?v=paperfall2';
+import {familyProfile} from './family-motion.js?v=paperfall2';
+import {arrivalPose} from './arrival-pose.js';
 
-export async function playRevealFlight({view,app,reduced,signal}){
+export async function playRevealFlight({view,app,reduced,signal,papers}){
  if(signal.aborted)return false;
  const scene=view.target,studio=app.querySelector('.studio'),canvas=view.renderer.canvas;
  if(reduced.matches||document.hidden){view.renderer.draw(scene);return true;}
- const distance=Math.round(Math.max(300,innerHeight*.68)),profile=familyProfile(scene),gesture=scene.answers.attitude==='playful'?'greet':'look',gestureDuration=profile[gesture+'Duration']*1000;
+ const distance=Math.round(Math.max(600,innerHeight*ARRIVAL_DISTANCE)),profile=familyProfile(scene),gesture=scene.answers.attitude==='playful'?'greet':'look',gestureDuration=profile[gesture+'Duration']*1000;
  const duration=ARRIVAL_GESTURE_AT+gestureDuration,tiltDirection=scene.seed%2?1:-1;
  app.style.setProperty('--fall-distance',`${distance}px`);
  const rect=canvas.getBoundingClientRect(),scale=Math.min(rect.width/600,rect.height/760),shadow=document.createElement('div');
@@ -26,10 +27,11 @@ export async function playRevealFlight({view,app,reduced,signal}){
    if(signal.aborted){finish(false);return;}
    const elapsed=now-started,beat=arrivalBeat(elapsed,gesture,gestureDuration);
    app.dataset.revealPhase=beat.phase;
+   papers?.flight(elapsed,beat);
    studio.style.transform=`translateY(${beat.drop*distance}px) rotate(${beat.tilt*tiltDirection}deg)`;
    studio.style.transformOrigin='50% 86%';shadow.style.opacity=String(beat.shadow*.72);
    window.scrollTo({top:beat.camera*distance,behavior:'instant'});
-   if(now-lastPaint>=32){view.renderer.draw(supportsFamilyMotion(scene)?familyPose(scene,beat.action,beat.pose,0):scene);lastPaint=now;}
+   if(now-lastPaint>=32){view.renderer.draw(arrivalPose(scene,beat,elapsed));lastPaint=now;}
    if(elapsed<duration)raf=requestAnimationFrame(frame);else finish(true);
   };raf=requestAnimationFrame(frame);
  });

@@ -61,7 +61,7 @@ export function gaitTargets(rig,profile,t,direction=1){
 }
 
 export function familyPose(scene,action='breathe',t=0,seconds=0,direction=1){
- const rig=buildFamilyRig(scene),p=familyProfile(scene);t=clamp(t);const cue=expressionPerformance(action,t,scene.seed);
+ const rig=buildFamilyRig(scene),p=familyProfile(scene);t=clamp(t);const cue=expressionPerformance(action==='fall'?'gasp':action,t,scene.seed);
  // Preserve the approved four Rift actions, including their exact fitted rig.
  if(rig.rift&&['breathe','walk','jump','greet'].includes(action)){const pose=characterActionPose(scene,rig.rift,action,t,seconds*actionProfile(scene).breathPeriod/p.breathPeriod,direction);return {...pose,faceFrame:{...pose.faceFrame,cue:expressionPerformance(action==='jump'?'gasp':action==='greet'?'grin':'breathe',t,scene.seed)}};}
  const breath=(1-Math.cos(seconds/p.breathPeriod*Math.PI*2))*.5*(1-cue.freeze*.94),env=Math.sin(Math.PI*t)**2;
@@ -103,6 +103,11 @@ export function familyPose(scene,action='breathe',t=0,seconds=0,direction=1){
   if(action==='greet'){
    const delay=i*.055,raise=ease((t-.05-delay)/.27)*ease((1-t)/.28)*(i===0?1:.24),reach=Math.min(90,arm.length*.53),wave=Math.sin(t*16+i*.8)*env*.07*p.elasticity;
    target=[mix(target[0],Math.max(85,Math.min(470,root[0]+side*reach)),raise),mix(target[1],root[1]-Math.min(90,arm.length*.45),raise)];roll=Math.PI*raise+wave*raise;
+  }
+  if(action==='fall'){
+   const raise=ease(t/.07),flap=Math.sin(seconds*8.5+i*2.1),reach=Math.min(105,arm.length*.65);
+   target=[mix(target[0],root[0]+side*(reach+flap*24),raise),mix(target[1],root[1]-arm.length*(.42+.24*flap),raise)];
+   roll=raise*(side*1.8+Math.sin(seconds*10+i*1.7)*.6);
   }
   const chain=solveChain(arm.rest,root,target);posed.set(arm.id,chain);if(arm.terminalId)terminals.set(arm.terminalId,{limb:arm,chain,rotation:roll??angle(chain.at(-2),chain.at(-1))-angle(arm.rest.at(-2),arm.rest.at(-1))});
  }

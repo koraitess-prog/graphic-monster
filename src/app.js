@@ -13,8 +13,9 @@ import {SharedArchive,combineArchives} from './shared-archive.js';
 import {archiveConfig} from './archive-config.js';
 import {CollectionScreen,parseCollectionRoute} from './collection-screen.js?v=arrival1';
 import {decoratePaperTitles} from './paper-titles.js?v=arrival1';
-import {playRevealFlight} from './reveal-flight.js';
+import {playRevealFlight} from './reveal-flight.js?v=paperfall2';
 import {familyProfile} from './family-motion.js';
+import {createRevealPapers} from './reveal-papers.js?v=paperfall2';
 
 const app=document.querySelector('#app'),copy=document.querySelector('#copy'),canvas=document.querySelector('#monster');
 const announcement=document.querySelector('#announcement'),dialog=document.querySelector('#name-dialog');
@@ -153,11 +154,13 @@ async function enterReveal(next,{focus=true}={}){
  copy.querySelectorAll('button').forEach(b=>b.disabled=true);
  document.body.classList.add('reveal-playing');app.classList.add('reveal-air');app.dataset.revealPhase='assembling';view.renderer.ground=false;window.scrollTo({top:0,behavior:'instant'});
  const finalScene=generateMonster({...next.answers,...(next.visualSeed!==null?{seed:next.visualSeed}:{})},next.rulesVersion);
+ let papers={finish(){}};
  try{
+  papers=createRevealPapers({scene:finalScene,name:next.name,reduced});
   await formation.reveal(finalScene);
   if(controller.signal.aborted||state!==sourceState||parseCollectionRoute(location.hash))return;
   view.visible=false;view.update(finalScene,{immediate:true});view.stop();state=next;render({focus:false});app.classList.add('reveal-stage');
-  const completed=await playRevealFlight({view,app,reduced,signal:controller.signal});
+  const completed=await playRevealFlight({view,app,reduced,signal:controller.signal,papers});
   if(!completed||controller.signal.aborted||parseCollectionRoute(location.hash))return;
   view.renderer.ground=true;view.renderer.draw(finalScene);
   const before=artRect();app.classList.remove('reveal-stage');app.querySelector('.studio').style.removeProperty('transform');app.querySelector('.studio').style.removeProperty('transform-origin');app.style.removeProperty('--fall-distance');
@@ -168,6 +171,7 @@ async function enterReveal(next,{focus=true}={}){
   }
   if(controller.signal.aborted)return;
   revealPlaying=false;document.body.classList.remove('reveal-playing');app.dataset.revealPhase='complete';
+  papers.finish();
   afterlife.hidden=false;canvas.setAttribute('aria-label',`${state.name}. ${state.story.text}`);
   if(!reduced.matches&&!document.hidden)afterlife.animate([{opacity:0,transform:'translateY(10px)'},{opacity:1,transform:'none'}],{duration:400,easing:'ease-out'});
   view.visible=true;view.familyDue=performance.now()+familyProfile(finalScene).pause;view.update(finalScene,{immediate:true});
@@ -176,6 +180,7 @@ async function enterReveal(next,{focus=true}={}){
   console.warn('Creature arrival:',error.message);
   if(!controller.signal.aborted&&!parseCollectionRoute(location.hash)){revealPlaying=false;state=next;view.visible=true;view.update(finalScene,{immediate:true});render({focus});window.scrollTo({top:0,behavior:'instant'});}
  }finally{
+  papers.finish();
   if(revealController===controller){transitioning=false;answerLocked=false;revealPlaying=false;revealController=null;view.renderer.ground=true;document.body.classList.remove('reveal-playing');app.classList.remove('reveal-air','reveal-stage');app.style.removeProperty('--fall-distance');app.querySelector('.studio')?.style.removeProperty('transform');app.querySelector('.studio')?.style.removeProperty('transform-origin');}
  }
 }

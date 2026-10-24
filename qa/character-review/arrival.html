@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Paper arrival review</title>
+<link rel="stylesheet" href="../../style.css"><link rel="stylesheet" href="../../night.css"><link rel="stylesheet" href="../../interface-type.css">
+<style>body{margin:0;background:#202426}.review-controls{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:80}.review-controls button{background:#202426;color:#e8ddba;border:1px solid #69746c;padding:8px;font-size:11px;cursor:pointer}.review-controls button:focus-visible{outline:2px solid #e8ddba}#app{--fall-distance:95svh}#studio{top:64px;height:calc(100svh - 128px)}#monster{width:100%;height:100%;object-fit:contain}</style>
+<body class="reveal-playing"><main id="app" class="experience screen-reveal reveal-stage"><aside class="studio" id="studio"><div class="canvas-wrap"><canvas id="monster" aria-label="Rift arrival study" role="img"></canvas></div></aside></main>
+<nav class="review-controls" aria-label="Review animation"><button data-time="0">Formation</button><button data-time="2700">Fall</button><button data-time="6000">Heap</button><button data-time="7400">Rise</button><button id="play">Play</button></nav>
+<script type="module">
+import {generateMonster,combinations} from '../../src/dna.js';
+import {MonsterRenderer} from '../../src/renderer.js?v=arrival1';
+import {arrivalPose} from '../../src/arrival-pose.js';
+import {arrivalBeat,ARRIVAL_DISTANCE} from '../../src/arrival.js?v=paperfall2';
+import {playRevealFlight} from '../../src/reveal-flight.js';
+import {createRevealPapers} from '../../src/reveal-papers.js';
+const scene=generateMonster({...combinations()[15],seed:3},6),canvas=document.querySelector('#monster'),app=document.querySelector('#app'),studio=document.querySelector('#studio'),renderer=new MonsterRenderer(canvas,{scale:1.5,background:'#202426'}),reduced=matchMedia('(prefers-reduced-motion: reduce)');renderer.ground=false;
+let papers,controller;
+function still(ms){controller?.abort();papers?.finish();papers=createRevealPapers({scene,name:'Rift',reduced,manual:true});const beat=arrivalBeat(ms),distance=Math.max(600,innerHeight*ARRIVAL_DISTANCE);app.style.setProperty('--fall-distance',distance+'px');renderer.draw(arrivalPose(scene,beat,ms));studio.style.transform=`translateY(${beat.drop*distance}px) rotate(${beat.tilt}deg)`;window.scrollTo({top:beat.camera*distance,behavior:'instant'});if(ms===0)papers.assembly(1550);else papers.flight(ms,beat);}
+document.querySelectorAll('[data-time]').forEach(b=>b.addEventListener('click',()=>still(Number(b.dataset.time))));
+document.querySelector('#play').addEventListener('click',async()=>{controller?.abort();papers?.finish();controller=new AbortController();papers=createRevealPapers({scene,name:'Rift',reduced,manual:true});await playRevealFlight({view:{target:scene,renderer,stop(){}},app,reduced,signal:controller.signal,papers});});
+still(2700);
+</script></body></html>
