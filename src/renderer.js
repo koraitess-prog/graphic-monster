@@ -178,7 +178,7 @@ export class MonsterRenderer{
    const ctx=this.ctx;ctx.setTransform(this.scale,0,0,this.scale,0,0);ctx.clearRect(0,0,600,760);ctx.fillStyle=this.background;ctx.fillRect(0,0,600,760);ctx.lineCap='round';ctx.lineJoin='round';
    // A few understated graphite strokes ground the feet in the same paper.
    ctx.strokeStyle='#d4d0c4';ctx.lineWidth=.4;ctx.globalAlpha=.4;
-   for(let i=0;i<(scene.stage===0?0:22);i++){const x=176+i*10,y=668+Math.sin(i*4.3)*3;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+10+Math.sin(i*2.2)*7,y+.2);ctx.stroke();}ctx.globalAlpha=1;
+   for(let i=0;i<(scene.stage===0||this.ground===false?0:22);i++){const x=176+i*10,y=668+Math.sin(i*4.3)*3;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+10+Math.sin(i*2.2)*7,y+.2);ctx.stroke();}ctx.globalAlpha=1;
    const body=scene.shapes.find(s=>s.id==='body'),bodyPath=polyPath(body.points);
    for(const s of scene.shapes){
      if(s.carrier)continue;

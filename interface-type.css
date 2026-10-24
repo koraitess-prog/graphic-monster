@@ -24,3 +24,7 @@ body .dossier-story{font:400 14px/1.65 var(--type-interface)}
 
 /* Functional overrides must also beat the older, highly specific font shorthands. */
 body :is(p,button,input,select,textarea,label,figcaption,dt,dd,small,.text-button,.counter,.header-name,.studio-foot,.decision-status,.choice-label,.dimension,.collection-count,.dossier-number,.answer-list,.specimen-seed,.habitat-label,.specimen-number,.dossier-identity li,.intro-caption){font-family:var(--type-interface)!important}
+
+/* Every live text element uses IBM Mono. Illustrated canvas letters keep their art. */
+:root{--type-display:'IBM Plex Mono',monospace}
+body *:not(canvas):not(.cut-title):not(.cut-word):not(.cut-letter){font-family:'IBM Plex Mono',monospace!important}

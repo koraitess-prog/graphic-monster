@@ -13,18 +13,18 @@ import {SharedArchive,combineArchives} from './shared-archive.js';
 import {archiveConfig} from './archive-config.js';
 import {CollectionScreen,parseCollectionRoute} from './collection-screen.js?v=mobile2';
 import {decoratePaperTitles} from './paper-titles.js';
+import {playRevealFlight} from './reveal-flight.js';
+import {familyProfile} from './family-motion.js';
 
 const app=document.querySelector('#app'),copy=document.querySelector('#copy'),canvas=document.querySelector('#monster');
 const announcement=document.querySelector('#announcement'),dialog=document.querySelector('#name-dialog');
 const headerName=document.querySelector('#header-name'),caption=document.querySelector('#creature-caption');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)'),storageKey='graphic-monster:experience:v2';
-const dimensions=['Language','Organization','Gaze','Surface','Gesture'];
 const feedback=['Taking shape.','Finding its balance.','Something is waking up.','Leaving an impression.','Becoming itself.'];
 const freshSeed=()=>crypto.getRandomValues(new Uint32Array(1))[0];
 const escape=text=>String(text??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const labelFor=(q,value)=>q.options.find(o=>o[0]===value)?.[1];
-const complete=()=>QUESTIONS.every(q=>state.answers[q.key]);
-let state=initialState(),advanceTimer,renameFocus,transitioning=false;
+let state=initialState(),advanceTimer,renameFocus,transitioning=false,answerLocked=false,revealPlaying=false,revealController=null;
 let archiveDB,records=[],archiveFailure='',archiveQueue=Promise.resolve();
 const sharedArchive=new SharedArchive(archiveConfig);let sharedRecords=[],refreshingArchive=false;
 const afterlife=document.querySelector('#afterlife');
@@ -40,7 +40,7 @@ const view=new CreatureView(canvas,previewScene());
 const formation=new PaperFormation(view);
 function warmPaint(scene){void loadPaintTiles(scene).then(()=>{if(!app.hidden&&!formation.active&&!transitioning)view.renderer.draw(view.pose());});}
 warmPaint(previewScene());
-const stageVisibility=new IntersectionObserver(entries=>{if(formation.active)formation.setVisible(entries[0].isIntersecting);else view.setVisible(entries[0].isIntersecting);},{threshold:.05});stageVisibility.observe(canvas);
+const stageVisibility=new IntersectionObserver(entries=>{if(transitioning)return;if(formation.active)formation.setVisible(entries[0].isIntersecting);else view.setVisible(entries[0].isIntersecting);},{threshold:.05});stageVisibility.observe(canvas);
 function save(){
  try{sessionStorage.setItem(storageKey,JSON.stringify(state));}catch{}
  if(parseCollectionRoute(location.hash))return;
@@ -48,7 +48,7 @@ function save(){
  else if(location.hash.startsWith('#dna='))history.replaceState(null,'',location.pathname+location.search);
 }
 function announce(text){announcement.textContent=text;}
-function progress(){return `<nav class="dimension-nav" aria-label="Your five design decisions">${QUESTIONS.map((q,i)=>{const available=QUESTIONS.slice(0,i).every(p=>state.answers[p.key]);return `<button type="button" data-step="${i}" class="dimension${state.step===i?' current':''}${state.answers[q.key]?' complete':''}" ${available?'':'disabled'} ${state.step===i?'aria-current="step"':''} aria-label="${dimensions[i]}${state.answers[q.key]?`: ${labelFor(q,state.answers[q.key])}`:''}"><span class="progress-mark" aria-hidden="true"></span></button>`;}).join('')}</nav>`;}
+function progress(){return `<div class="dimension-nav" role="progressbar" aria-label="Design decisions" aria-valuemin="0" aria-valuemax="5" aria-valuenow="${QUESTIONS.filter(q=>state.answers[q.key]).length}">${QUESTIONS.map((q,i)=>`<span class="dimension${state.step===i?' current':''}${state.answers[q.key]?' complete':''}" aria-hidden="true"><span class="progress-mark"></span></span>`).join('')}</div>`;}
 function answer(option,index){const[value,label,detail]=option,selected=state.answers[QUESTIONS[state.step].key]===value;return `<button type="button" class="choice${selected?' selected':''}" data-value="${value}" aria-pressed="${selected}" aria-label="${label}" title="${label}"><span class="choice-art">${visualChoice(value)}</span><span class="choice-label">${label}</span><span class="choice-check" aria-hidden="true">✓</span></button>`;}
 function render({focus=false,selection=false}={}){
  document.body.classList.toggle('intro-paper',state.screen==='intro'&&!parseCollectionRoute(location.hash));
@@ -63,24 +63,25 @@ function render({focus=false,selection=false}={}){
    document.querySelector('#stage-note').textContent='';
    canvas.setAttribute('aria-label','An amorphous living painting. No face or limbs yet.');
  }else if(state.screen==='question'){
-   const q=QUESTIONS[state.step],selected=state.answers[q.key];
-   copy.innerHTML=`<div class="question-top"><span class="counter">0${state.step+1} <span>/ 05</span></span><button type="button" class="text-button" data-action="back" aria-label="Back"><span aria-hidden="true">←</span></button></div><h1 class="question-title" tabindex="-1">${q.title.replace('\n',' ')}</h1><div class="choices ${q.options.length===5?'five':'two'}" role="group" aria-label="${q.title.replace('\n',' ')}">${q.options.map(answer).join('')}</div><div class="question-footer">${progress()}<div class="decision-status">${selected?`<button type="button" class="text-button" data-action="next" aria-label="${complete()?'Create and share':'Next'}">${complete()?'<span class="finish-label">Create &amp; share</span>':'<span class="sr-only">Next</span>'}<span aria-hidden="true">→</span></button>`:''}</div></div>`;
+   const q=QUESTIONS[state.step];
+   copy.innerHTML=`<div class="question-top"><span class="counter">0${state.step+1} <span>/ 05</span></span></div><h1 class="question-title" tabindex="-1">${q.title.replace('\n',' ')}</h1><div class="choices ${q.options.length===5?'five':'two'}" role="group" aria-label="${q.title.replace('\n',' ')}">${q.options.map(answer).join('')}</div><div class="question-footer">${progress()}</div>`;
    document.querySelector('#stage-note').textContent='';
    canvas.setAttribute('aria-label',`${state.name}, evolving through your design decisions. ${QUESTIONS.filter(q=>state.answers[q.key]).map(q=>labelFor(q,state.answers[q.key])).join(', ')}.`);
  }else{
    state=reducer(state,{type:'REVEAL'});
    const story=state.story.text;
-   const nameSize=state.name.length>32?64:state.name.length>17?94:state.name.length>9?128:174;
+   const nameSize=state.name.length>24?28:state.name.length>12?36:44;
    copy.innerHTML=`<h1 class="reveal-name" style="--name-size:${nameSize}px" tabindex="-1" dir="auto">${escape(state.name)}</h1><div class="poster-actions"><button type="button" class="text-button visit-archive" data-action="archive">Archive <span aria-hidden="true">↗</span></button><button type="button" class="text-button" data-action="reset">New monster</button></div>`;
    fitRevealName();
    document.querySelector('#full-story').innerHTML=`<p class="personality" aria-live="polite" aria-atomic="true">${escape(story)}</p><button type="button" class="another-story text-button" data-action="story">New description</button>`;
    void syncArchive(structuredClone(state));
-   document.querySelector('#stage-note').textContent='';canvas.setAttribute('aria-label',`${state.name}. ${story}`);
+   document.querySelector('#stage-note').textContent='';canvas.setAttribute('aria-label',revealPlaying?state.name:`${state.name}. ${story}`);
  }
  if(state.screen==='question'){formation.update(generateMonster(visualAnswers(),state.rulesVersion),state.answers);}
  else if(formation.active){formation.stop();view.visible=true;}
- afterlife.hidden=state.screen!=='reveal';
- if(state.rulesVersion>=6)decoratePaperTitles(copy);
+ afterlife.hidden=state.screen!=='reveal'||revealPlaying;
+ document.body.classList.toggle('monster-reveal',state.screen==='reveal'&&!parseCollectionRoute(location.hash));
+ if(state.rulesVersion>=6)decoratePaperTitles(copy,{scene:state.screen==='reveal'?previewScene():undefined});
  window.dispatchEvent(new CustomEvent('graphic-monster:intro',{detail:state.screen==='intro'&&!parseCollectionRoute(location.hash)}));
  if(focus){
    copy.querySelector('h1')?.focus({preventScroll:true});
@@ -94,7 +95,7 @@ function fitRevealName(){
  const family=displayFamily(state.name);title.style.fontFamily=family;const ctx=document.createElement('canvas').getContext('2d');ctx.font=`900 100px ${family}`;
  const natural=ctx.measureText(state.name).width/100,mobile=innerWidth<=680,width=mobile?app.clientWidth-38:app.clientWidth*.88;
  const desired=Number(title.style.getPropertyValue('--name-size').replace('px',''))||174;
- const size=Math.max(mobile?22:28,Math.min(desired,innerWidth*(mobile?.17:.105),width*(mobile?2.8:1.85)/Math.max(1,natural)));
+ const size=Math.max(20,Math.min(desired,44,width/Math.max(1,natural)));
  title.style.fontSize=`${size}px`;
 }
 window.addEventListener('resize',fitRevealName);
@@ -107,6 +108,7 @@ async function routeCollection(){
  const route=parseCollectionRoute(location.hash);
  if(!route){collection.close();app.hidden=false;render();if(state.screen!=='question')view.setVisible(true);return;}
  document.body.classList.remove('intro-paper');
+ revealController?.abort();document.body.classList.remove('monster-reveal');
  window.dispatchEvent(new CustomEvent('graphic-monster:intro',{detail:false}));
  clearTimeout(advanceTimer);formation.stop();app.hidden=true;afterlife.hidden=true;headerName.hidden=true;view.setVisible(false);
  document.querySelector('.header-actions [data-action="archive"]').hidden=true;
@@ -147,24 +149,48 @@ async function syncArchive(snapshot){
 }
 function artRect(){const r=canvas.getBoundingClientRect(),scale=Math.min(r.width/600,r.height/760);return {x:r.left+r.width/2,y:r.top+r.height/2,scale};}
 async function enterReveal(next,{focus=true}={}){
- const sourceState=state;transitioning=true;clearTimeout(advanceTimer);copy.querySelectorAll('button').forEach(b=>b.disabled=true);
+ const sourceState=state,controller=new AbortController();revealController=controller;transitioning=true;revealPlaying=true;clearTimeout(advanceTimer);
+ copy.querySelectorAll('button').forEach(b=>b.disabled=true);
+ document.body.classList.add('reveal-playing');app.classList.add('reveal-air');app.dataset.revealPhase='assembling';view.renderer.ground=false;window.scrollTo({top:0,behavior:'instant'});
  const finalScene=generateMonster({...next.answers,...(next.visualSeed!==null?{seed:next.visualSeed}:{})},next.rulesVersion);
- await formation.reveal(finalScene);
- if(state!==sourceState||parseCollectionRoute(location.hash)){transitioning=false;return;}
- view.visible=true;view.update(finalScene,{immediate:true});
- const before=artRect();state=next;render({focus});window.scrollTo({top:0,behavior:'instant'});const after=artRect();
- if(!reduced.matches&&!document.hidden)canvas.animate([{transform:`translate(${before.x-after.x}px,${before.y-after.y}px) scale(${before.scale/after.scale})`},{transform:'translate(0,0) scale(1)'}],{duration:850,easing:'cubic-bezier(.22,.72,.2,1)'});
- view.greet(900);transitioning=false;
+ try{
+  await formation.reveal(finalScene);
+  if(controller.signal.aborted||state!==sourceState||parseCollectionRoute(location.hash))return;
+  view.visible=false;view.update(finalScene,{immediate:true});view.stop();state=next;render({focus:false});app.classList.add('reveal-stage');
+  const completed=await playRevealFlight({view,app,reduced,signal:controller.signal});
+  if(!completed||controller.signal.aborted||parseCollectionRoute(location.hash))return;
+  view.renderer.ground=true;view.renderer.draw(finalScene);
+  const before=artRect();app.classList.remove('reveal-stage');app.querySelector('.studio').style.removeProperty('transform');app.querySelector('.studio').style.removeProperty('transform-origin');app.style.removeProperty('--fall-distance');
+  window.scrollTo({top:0,behavior:'instant'});const after=artRect();
+  if(!reduced.matches&&!document.hidden){
+   const landing=canvas.animate([{transform:`translate(${before.x-after.x}px,${before.y-after.y}px) scale(${before.scale/after.scale})`},{transform:'translate(0,0) scale(1)'}],{duration:320,easing:'cubic-bezier(.22,.72,.2,1)'});
+   await landing.finished.catch(()=>{});
+  }
+  if(controller.signal.aborted)return;
+  revealPlaying=false;document.body.classList.remove('reveal-playing');app.dataset.revealPhase='complete';
+  afterlife.hidden=false;canvas.setAttribute('aria-label',`${state.name}. ${state.story.text}`);
+  if(!reduced.matches&&!document.hidden)afterlife.animate([{opacity:0,transform:'translateY(10px)'},{opacity:1,transform:'none'}],{duration:400,easing:'ease-out'});
+  view.visible=true;view.familyDue=performance.now()+familyProfile(finalScene).pause;view.update(finalScene,{immediate:true});
+  if(focus)copy.querySelector('h1')?.focus({preventScroll:true});announce(`${state.name}. ${state.story.text}`);
+ }catch(error){
+  console.warn('Creature arrival:',error.message);
+  if(!controller.signal.aborted&&!parseCollectionRoute(location.hash)){revealPlaying=false;state=next;view.visible=true;view.update(finalScene,{immediate:true});render({focus});window.scrollTo({top:0,behavior:'instant'});}
+ }finally{
+  if(revealController===controller){transitioning=false;answerLocked=false;revealPlaying=false;revealController=null;view.renderer.ground=true;document.body.classList.remove('reveal-playing');app.classList.remove('reveal-air','reveal-stage');app.style.removeProperty('--fall-distance');app.querySelector('.studio')?.style.removeProperty('transform');app.querySelector('.studio')?.style.removeProperty('transform-origin');}
+ }
 }
 function dispatch(event,{focus=true,art=false}={}){
- clearTimeout(advanceTimer);const previous=state.screen,next=reducer(state,event);
+ clearTimeout(advanceTimer);answerLocked=false;const previous=state.screen,next=reducer(state,event);
  if(previous==='question'&&next.screen==='reveal'){enterReveal(next,{focus});return;}
  state=next;render({focus});if(previous!=='reveal'&&state.screen==='reveal')window.scrollTo({top:0,behavior:'instant'});if(art&&state.screen!=='question'){const scene=previewScene();view.update(scene,{immediate:state.screen==='intro'});warmPaint(scene);}
 }
 function choose(value){
- if(transitioning)return;
+ if(transitioning||answerLocked)return;
+ answerLocked=true;
  transferMaterial(copy.querySelector(`[data-value="${value}"] .choice-art`));
  clearTimeout(advanceTimer);state=reducer(state,{type:'SELECT',value});const q=QUESTIONS[state.step];render({selection:true});announce(`${labelFor(q,value)} selected. ${feedback[state.step]}`);
+ copy.querySelectorAll('.choice').forEach(b=>b.disabled=true);
+ advanceTimer=setTimeout(()=>{answerLocked=false;dispatch({type:'ADVANCE'});},reduced.matches?0:140);
 }
 function transferMaterial(source){
  if(!source||reduced.matches||document.hidden)return;
@@ -187,13 +213,11 @@ document.querySelector('#rename-form').addEventListener('submit',event=>{event.p
 document.querySelector('#edit-monster-name').addEventListener('input',event=>event.target.setCustomValidity(''));
 dialog.addEventListener('close',()=>renameFocus?.isConnected&&renameFocus.focus({preventScroll:true}));
 document.addEventListener('click',event=>{
- const button=event.target.closest('button');if(!button||button.disabled||transitioning)return;
+ const button=event.target.closest('button');if(!button||button.disabled||transitioning||answerLocked)return;
  if(button.dataset.value&&state.screen==='question'){choose(button.dataset.value);return;}
- if(button.dataset.step!==undefined){dispatch({type:'GO',step:Number(button.dataset.step)});return;}
  switch(button.dataset.action){
   case'archive':clearTimeout(advanceTimer);location.hash='archive';break;
   case'back':dispatch({type:'BACK'},{art:true});break;
-  case'next':dispatch({type:complete()?'REVEAL':'ADVANCE'});break;
   case'rename':openRename();break;
   case'close-name':dialog.close();break;
   case'story':dispatch({type:'REGENERATE',seed:freshSeed()},{focus:false});announce('A new story for the same creature.');document.querySelector('[data-action="story"]').focus({preventScroll:true});break;
@@ -207,7 +231,8 @@ copy.addEventListener('keydown',event=>{
  const delta=event.key==='ArrowUp'?-columns:event.key==='ArrowDown'?columns:event.key==='ArrowLeft'?-1:1;
  const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+delta+buttons.length)%buttons.length;buttons[next].focus();
 });
-document.querySelector('.wordmark').addEventListener('click',event=>{event.preventDefault();if(parseCollectionRoute(location.hash)){returnToExperience();return;}if(state.screen!=='reveal')dispatch({type:'HOME'},{art:true});});
+document.querySelector('.wordmark').addEventListener('click',event=>{event.preventDefault();if(transitioning||answerLocked)return;if(parseCollectionRoute(location.hash)){returnToExperience();return;}if(state.screen!=='reveal')dispatch({type:'HOME'},{art:true});});
 window.addEventListener('hashchange',()=>{if(parseCollectionRoute(location.hash)||!collection.root.hidden){void routeCollection();return;}if(state.screen==='reveal'){save();return;}if(applyHash()){clearTimeout(advanceTimer);render({focus:true});view.update(previewScene());}});
 document.querySelector('.header-actions [data-action="archive"]').disabled=false;
 render();if(parseCollectionRoute(location.hash))void routeCollection();
+else for(let resume=0;resume<5&&state.screen==='question'&&state.answers[QUESTIONS[state.step].key]&&!transitioning;resume++)dispatch({type:'ADVANCE'});

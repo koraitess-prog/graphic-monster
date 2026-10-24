@@ -223,3 +223,36 @@ body.intro-paper,html:has(body.intro-paper){background:#101313;color:#e8ddba}
 .archive-intro .archive-label{margin:26px 0 0;font:400 16px/1.6 'IBM Plex Mono',monospace!important;letter-spacing:.14em;color:#f5f1e8;text-align:center}
 .collection-error{font:12px/1.6 var(--type-interface);color:#d7ab87;margin:0 0 24px}
 @media(max-width:680px){.archive-intro{margin-bottom:26px}.archive-intro .archive-label{margin:20px 0 0;font-size:13px!important}}
+
+/* One decision per step; the marks are progress, not navigation. */
+.screen-question .question-title{font-size:clamp(25px,2.4vw,36px);line-height:1.3;letter-spacing:-.045em;min-height:2.6em}
+.screen-question .question-top{min-height:44px}
+.screen-question .dimension{display:inline-flex;align-items:center;justify-content:center;pointer-events:none}
+.screen-question .choice:disabled{opacity:1;cursor:default}
+.screen-question .choice:disabled:not(.selected){opacity:.35}
+.monster-reveal .site-header,.reveal-playing .site-header{display:none}
+.monster-reveal{overflow-x:clip}
+/* A small name above a large, uninterrupted creature stage. */
+.screen-reveal{position:relative;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:64px minmax(0,1fr) 64px;height:88svh;min-height:500px;max-width:1600px;padding:0 24px;margin:auto;isolation:isolate}
+.screen-reveal .copy{display:contents;position:static;pointer-events:auto}
+.screen-reveal .studio{position:relative;inset:auto;grid-row:2;grid-column:1;width:100%;height:100%;min-height:0;align-self:stretch;margin:0;padding:0;background:none;pointer-events:auto}
+.screen-reveal .canvas-wrap{width:100%;height:100%;max-width:none}
+.screen-reveal .reveal-name,.screen-reveal .creature-lettering{position:static;grid-row:1;grid-column:1;width:min(240px,60vw);max-width:100%;margin:14px auto 0;align-self:center;font-size:40px!important;text-align:center}
+.screen-reveal .creature-lettering canvas{width:100%;height:auto;max-height:42px;object-position:center}
+.screen-reveal .poster-actions{position:static;grid-row:3;grid-column:1;width:100%;display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;justify-content:center;gap:32px;margin:0;padding:0}
+.screen-reveal .poster-actions .text-button{flex:none;white-space:nowrap}
+.monster-reveal .afterlife{padding:16px 24px 60px}
+.monster-reveal .full-story{display:block;max-width:680px;margin:0 auto;text-align:center}
+.monster-reveal .full-story .personality{max-width:none;font-size:14px;line-height:1.7;margin:0}
+.monster-reveal .full-story .another-story{margin:10px 0 0;font-size:11px}
+.reveal-playing .screen-reveal .reveal-name,.reveal-playing .poster-actions{visibility:hidden}
+/* Temporary taller page: the browser camera follows the falling creature. */
+.reveal-playing{overflow-x:clip;scroll-behavior:auto}
+.screen-question.reveal-air{display:block;position:relative;min-height:100svh;padding:0;width:100%;max-width:1600px}
+.reveal-air .copy{visibility:hidden;height:0;overflow:hidden;padding:0}
+.reveal-air .studio,.screen-reveal.reveal-stage .studio{position:absolute;top:64px;left:0;right:0;bottom:auto;width:100%;height:calc(100svh - 128px);min-height:0;inset-inline:0;margin:0;padding:0;background:none}
+.reveal-air .canvas-wrap,.screen-reveal.reveal-stage .canvas-wrap{height:100%;width:100%}
+.screen-reveal.reveal-stage{height:calc(100svh + var(--fall-distance,0px));min-height:100svh;display:block;padding:0}
+.arrival-ground{position:absolute;left:50%;width:clamp(90px,20vw,230px);height:9px;transform:translate(-50%,-50%);border-radius:50%;background:#101515;opacity:0;pointer-events:none;z-index:3}
+@media(max-width:680px){.screen-question .question-title{font-size:25px}.screen-reveal{padding:0 18px;grid-template-rows:58px minmax(0,1fr) 64px}.screen-reveal .reveal-name,.screen-reveal .creature-lettering{width:min(190px,58vw);font-size:32px!important}.screen-reveal .creature-lettering canvas{max-height:34px}.monster-reveal .afterlife{padding-inline:22px}.monster-reveal .full-story .personality{font-size:12px}.reveal-air .studio,.screen-reveal.reveal-stage .studio{top:58px;height:calc(100svh - 122px)}}
+@media(prefers-reduced-motion:reduce){.screen-question .choice:disabled{transition:none}}

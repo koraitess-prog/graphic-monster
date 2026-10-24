@@ -54,7 +54,7 @@ export class CollectionScreen{
     this.profileVisibility=new IntersectionObserver(entries=>this.profile?.setVisible(entries[0].isIntersecting),{threshold:.05});this.profileVisibility.observe(this.root.querySelector('.dossier-art'));
    }
   }
-  decoratePaperTitles(this.root);
+  decoratePaperTitles(this.root,{scene:route.type==='profile'?records.find(r=>r.id===route.id)?.scene:undefined});
   if(sameRoute){
    const target=focusId?this.root.querySelector(`[data-specimen="${CSS.escape(focusId)}"]`):focusAction?this.root.querySelector(`[data-collection-action="${CSS.escape(focusAction)}"]`):null;
    target?.focus({preventScroll:true});window.scrollTo({top:scroll,behavior:'instant'});

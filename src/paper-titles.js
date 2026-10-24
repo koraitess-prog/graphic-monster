@@ -2,11 +2,11 @@ import {mountIntroLettering} from './intro-lettering.js';
 import {mountCreatureName} from './creature-lettering.js';
 import {mountLivingTitle} from './living-title.js';
 const stocks=['#e6ddc5','#c9bb9b','#d6a333','#dcd3bc','#b7a4b8','#e6ddc5'];
-export function decoratePaperTitles(root=document){
+export function decoratePaperTitles(root=document,{scene}={}){
  for(const title of root.querySelectorAll('h1:not([data-paper-letters])')){
   if(title.querySelector('canvas'))continue;
   if(title.matches('.archive-create-heading')){const lettering=title.querySelector('.archive-create-lettering');mountCreatureName(lettering,{align:'center'});mountLivingTitle(lettering);title.dataset.paperLetters='true';continue;}
-  if(title.matches('.reveal-name,.dossier-copy h1')){mountCreatureName(title);continue;}
+  if(title.matches('.reveal-name,.dossier-copy h1')){mountCreatureName(title,{scene});continue;}
   if(title.matches('.collection-heading h1')){const count=title.querySelector('.collection-count');count?.remove();mountCreatureName(title);if(count)title.append(count);continue;}
   if(title.matches('.question-title,.atlas-heading h1'))continue;
   if(title.classList.contains('intro-title')){mountIntroLettering(title);continue;}
