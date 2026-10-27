@@ -1,6 +1,6 @@
 import {QUESTIONS,normalizeAnswers,encodeDNA} from './dna.js';
 import {generateStory,wordCount} from './story.js';
-export const initialState=()=>({screen:'intro',rulesVersion:6,step:0,answers:{},name:'',storySeed:0,visualSeed:null,story:null,creationId:null,createdAt:null});
+export const initialState=()=>({screen:'intro',rulesVersion:7,step:0,answers:{},name:'',storySeed:0,visualSeed:null,story:null,creationId:null,createdAt:null});
 export const normalizeName=value=>Array.from(String(value??'').replace(/[\u0000-\u001f\u007f]/g,'').replace(/\s+/gu,' ').trim()).slice(0,48).join('');
 const complete=s=>QUESTIONS.every(q=>s.answers[q.key]);
 function withStory(state){
@@ -41,7 +41,7 @@ export function restoreState(raw){
   if(s.screen==='reveal'&&Object.keys(answers).length!==5)throw new Error();
   if(s.screen==='question'&&QUESTIONS.slice(0,s.step).some(q=>!answers[q.key]))throw new Error();
   const name=normalizeName(s.name),seed=Number.isInteger(s.storySeed)?s.storySeed>>>0:0;
-  const rulesVersion=!Object.keys(answers).length?6:[3,4,5,6].includes(s.rulesVersion)?s.rulesVersion:2;
+  const rulesVersion=!Object.keys(answers).length?7:[3,4,5,6,7].includes(s.rulesVersion)?s.rulesVersion:2;
   let state={rulesVersion,screen:name?s.screen:'intro',step:s.step,answers,name,storySeed:seed,visualSeed:Number.isInteger(s.visualSeed)?s.visualSeed>>>0:rulesVersion>=6&&Object.keys(answers).length?seed:null,story:null,creationId:typeof s.creationId==='string'?s.creationId:null,createdAt:Number.isFinite(s.createdAt)?s.createdAt:null};
   if(s.story&&complete(state)&&s.story.code===encodeDNA(answers)&&s.story.seed===seed&&typeof s.story.text==='string'&&wordCount(s.story.text)>=35&&wordCount(s.story.text)<=55&&s.story.text===generateStory(answers,seed,rulesVersion))state.story=s.story;
   return state.screen==='reveal'?withStory(state):state;

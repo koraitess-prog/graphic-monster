@@ -180,7 +180,7 @@ export class MonsterRenderer{
  draw(scene){
    scene=withMonsterMouth(scene);
    const ctx=this.ctx;
-   if(this.viewport){const v=this.viewport,w=Math.round(v.width*v.dpr),h=Math.round(v.height*v.dpr);if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;}ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,w,h);if(!this.transparent){ctx.fillStyle=this.background;ctx.fillRect(0,0,w,h);}ctx.setTransform(v.matrix[0]*v.dpr,0,0,v.matrix[3]*v.dpr,v.matrix[4]*v.dpr,v.matrix[5]*v.dpr);}
+   if(this.viewport){const v=this.viewport,w=Math.round(v.width*v.dpr),h=Math.round(v.height*v.dpr);if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;}ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,w,h);if(!this.transparent){ctx.fillStyle=this.background;ctx.fillRect(0,0,w,h);}ctx.setTransform(...v.matrix.map(n=>n*v.dpr));}
    else{ctx.setTransform(this.scale,0,0,this.scale,0,0);ctx.clearRect(0,0,600,760);if(!this.transparent){ctx.fillStyle=this.background;ctx.fillRect(0,0,600,760);}}
    ctx.lineCap='round';ctx.lineJoin='round';
    // A few understated graphite strokes ground the feet in the same paper.

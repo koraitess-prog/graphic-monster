@@ -19,6 +19,7 @@ import {playRevealFlight} from './reveal-flight.js?v=arrival2';
 import {createRevealPapers} from './reveal-papers.js?v=arrival2';
 import {familyProfile} from './family-motion.js';
 import {materialQuestion,nextMaterialRoute,restoreMaterialRoute} from './material-flow.js';
+import {describeCreature} from './creature-description.js';
 
 const app=document.querySelector('#app'),copy=document.querySelector('#copy'),canvas=document.querySelector('#monster');
 const announcement=document.querySelector('#announcement'),dialog=document.querySelector('#name-dialog');
@@ -41,6 +42,9 @@ try{state=restoreState(sessionStorage.getItem(storageKey)??sessionStorage.getIte
 function applyHash(){if(state.screen==='reveal')return false;const match=location.hash.match(/^#dna=([0-4][01]{4})$/);if(!match)return false;const answers=decodeDNA(match[1]);const changed=encodeDNA(state.answers)!==match[1];state={...state,answers,step:4,story:changed?null:state.story};state=state.name?reducer(state,{type:'REVEAL'}):{...state,screen:'intro'};return true;}
 applyHash();
 try{archiveDB=await openArchive();records=await archiveDB.list();}catch{archiveFailure='The collection cannot be saved in this browser right now.';}
+// Only unfinished, unarchived v6 drafts adopt answer-driven anatomy. Completed
+// creatures continue to use their original snapshot and rendering version.
+if(archiveDB&&state.screen==='question'&&state.rulesVersion===6&&!records.some(r=>r.id===state.creationId))state={...state,rulesVersion:7};
 const visualAnswers=()=>({...state.answers,...(state.rulesVersion>=6&&state.visualSeed!==null?{seed:state.visualSeed}:{})});
 const previewScene=()=>state.screen==='intro'?(state.rulesVersion>=4?paperPrelude():amorphousScene()):state.screen==='reveal'?(records.find(r=>r.id===state.creationId)?.scene??evolutionScene(visualAnswers(),state.rulesVersion)):evolutionScene(visualAnswers(),state.rulesVersion);
 
@@ -84,7 +88,7 @@ function render({focus=false,selection=false}={}){
    canvas.setAttribute('aria-label',`${state.name}, evolving through your design decisions. ${QUESTIONS.filter(q=>state.answers[q.key]).map(q=>labelFor(q,state.answers[q.key])).join(', ')}.`);
  }else{
    state=reducer(state,{type:'REVEAL'});
-   const story=state.story.text;
+   const story=describeCreature(previewScene());
    const nameSize=22;
    copy.innerHTML=`<div class="observation-identity"><h1 class="reveal-name" style="--name-size:${nameSize}px" tabindex="-1" dir="auto">${escape(state.name)}</h1><p class="specimen-description" dir="auto">${escape(story)}</p><div class="specimen-actions"><button type="button" class="specimen-new" data-action="reset">Create new monster</button><button type="button" class="text-button specimen-play-toggle" aria-pressed="false">Pause play</button></div></div>`;
    fitRevealName();
@@ -193,6 +197,7 @@ async function enterReveal(next,{focus=true}={}){
   if(!controller.signal.aborted&&!parseCollectionRoute(location.hash)){revealPlaying=false;state=next;view.visible=true;view.update(finalScene,{immediate:true});render({focus});}
  }finally{
   papers.finish();
+  formation.releaseArrival();
   if(revealController===controller){transitioning=false;answerLocked=false;revealPlaying=false;revealController=null;app.classList.remove('culture-assembling');document.body.classList.remove('arrival-in-progress');}
  }
 }

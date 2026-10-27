@@ -35,9 +35,9 @@ test('all new DNA paths reproduce, remain valid while moving, and preserve five-
   const seeded=generateMonster({...a,seed:123},6);assert.deepEqual(seeded,generateMonster({...a,seed:123},6));assert.equal(seeded.seed,123);assert.deepEqual(scene,generateMonster({...a,seed:scene.seed},6));
  }
 });
-test('a creation keeps its anatomy seed through the questionnaire and story regeneration',()=>{
+test('legacy version-six creations keep their anatomy seed through the questionnaire and story regeneration',()=>{
  for(let seed=0;seed<8;seed++){
-  let state=reducer(initialState(),{type:'START',name:'Continuity',seed}),previous=null;
+  let state=reducer({...initialState(),rulesVersion:6},{type:'START',name:'Continuity',seed}),previous=null;
   for(const [i,q]of QUESTIONS.entries()){
    state=reducer(state,{type:'SELECT',value:q.options[i%q.options.length][0]});const scene=evolutionScene({...state.answers,seed:state.visualSeed},6);
    assert.equal(scene.anatomy,ANATOMIES[seed]);
@@ -48,7 +48,7 @@ test('a creation keeps its anatomy seed through the questionnaire and story rege
  }
 });
 test('version six archives snapshots while previous versions and the approved Rift remain stable',()=>{
- for(const a of all){let state=reducer(initialState(),{type:'START',name:'Paper specimen',seed:19});for(const q of QUESTIONS){state=reducer(state,{type:'SELECT',value:a[q.key]});state=reducer(state,{type:'ADVANCE'});}
+ for(const a of all){let state=reducer({...initialState(),rulesVersion:6},{type:'START',name:'Paper specimen',seed:19});for(const q of QUESTIONS){state=reducer(state,{type:'SELECT',value:a[q.key]});state=reducer(state,{type:'ADVANCE'});}
   assert.equal(state.rulesVersion,6);assert.deepEqual(restoreState(JSON.stringify(state)),state);const record=makeRecord(state);assert.deepEqual(record.scene,generateMonster({...a,seed:state.visualSeed},6));
   const oldState={...state,rulesVersion:5},old=makeRecord(oldState);assert.deepEqual(restoreState(JSON.stringify(oldState)),oldState);assert.equal(mergeRecord(old,record).scene,old.scene);
  }

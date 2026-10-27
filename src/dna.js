@@ -1,5 +1,6 @@
 import {expandedCollageScene} from './expanded-collage.js';
 import {paperDNAScene} from './paper-dna.js';
+import {answerDNAScene} from './answer-dna.js';
 import {collageScene} from './collage.js';
 import {grotesqueScene} from './grotesque.js';
 import {sample,limb,rng} from './anidoodle-kit.js';
@@ -140,4 +141,4 @@ export function validateScene(scene){
  return [...new Set(errors)];
 }
 
-export function generateMonster(input={},version=3){if(version>=6)return paperDNAScene(input);if(version>=5)return expandedCollageScene(input);if(version>=4)return collageScene(input);const scene=generateLegacyMonster(input);return version>=3?grotesqueScene(scene):scene;}
+export function generateMonster(input={},version=3){if(version>=7)return answerDNAScene(input);if(version>=6)return paperDNAScene(input);if(version>=5)return expandedCollageScene(input);if(version>=4)return collageScene(input);const scene=generateLegacyMonster(input);return version>=3?grotesqueScene(scene):scene;}

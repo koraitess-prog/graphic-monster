@@ -1,6 +1,7 @@
 // Motion adapters for the eight EXISTING anatomical branches. These are joint
 // paths from collage.js / expanded-collage.js, not new visible anatomy.
 import {buildRiftRig} from './character-actions.js';
+import {mapDesignPoint} from './anatomy-dna.js';
 const basic={
  typography:{hips:[[263,477],[322,478]],arms:[[246,300],[337,300]]},
  color:{hips:[[234,486],[360,485]],arms:[[212,366],[396,363]]},
@@ -20,7 +21,7 @@ export function buildFamilyRig(scene){
  const warp=point=>{
   const [x,y]=point;let q=isSpecial?[300+(x-300)*(active?1.025:1)+(active?(415-y)*.018:0),y+(active?(x-300)*.013:0)]:[300+(x-300)*(loose?.91:1)+(loose?(350-y)*.065:0),y+(loose?(x-300)*.045:0)];
   if(isSpecial&&loose&&scene.rulesVersion>=6)q=[300+(q[0]-300)*.97+(655-q[1])*.018,q[1]];
-  return q;
+  return scene.answerAnatomy?mapDesignPoint(q,scene.answerAnatomy):q;
  };
  let paths={};
  if(isSpecial)paths=special[anatomy](active);
@@ -56,6 +57,6 @@ export function buildFamilyRig(scene){
  const body=scene.shapes.find(p=>p.id==='body'),xs=body.points.map(p=>p[0]),ys=body.points.map(p=>p[1]);
  const pelvis=legs.length?legs.reduce((c,p)=>[c[0]+p.rest[0][0]/legs.length,c[1]+p.rest[0][1]/legs.length],[0,0]):[(Math.min(...xs)+Math.max(...xs))/2,Math.max(...ys)];
  const rig={anatomy,legs,arms,stalks,pelvis,height:Math.max(...ys)-Math.min(...ys),width:Math.max(...xs)-Math.min(...xs)};
- if(anatomy==='typography'&&legs.length===2&&arms.length===2)rig.rift=buildRiftRig(scene);
+ if(anatomy==='typography'&&legs.length===2&&arms.length===2&&!scene.answerAnatomy)rig.rift=buildRiftRig(scene);
  cache.set(scene,rig);return rig;
 }

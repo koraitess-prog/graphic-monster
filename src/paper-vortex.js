@@ -22,6 +22,10 @@ export function stirAt(impulse,now){
  const t=Math.max(0,(now-impulse.at)/1000),energy=clamp(impulse.energy??.3);
  return {energy:energy*(1-Math.exp(-t*12))*Math.exp(-t*1.05),turn:(impulse.spin??1)*energy*1.35*(1-Math.exp(-t*1.5))};
 }
+export function incomingPaperPose(target,seconds){
+ const t=Math.max(0,Math.min(1,seconds/1.25)),u=t*t*(3-2*t),dx=target.x-300,dy=(target.y-362)/.75,a=Math.atan2(dy,dx)+(1-u)*1.8,r=Math.hypot(dx,dy)*u;
+ return {...target,x:300+Math.cos(a)*r,y:362+Math.sin(a)*r*.75,angle:target.angle+(1-u)*1.8,size:target.size*(.22+.78*u),fold:.4+(target.fold-.4)*u};
+}
 // All contours stay inside a normalized source crop; they are clipped from printed stock.
 export function shredContour(index){
  const contours=[

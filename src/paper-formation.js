@@ -3,7 +3,9 @@
 import {rng} from './anidoodle-kit.js';
 import {tornContour} from './paper-library.js';
 import {paintQuestionPaper} from './question-papers.js';
-import {vortexPose,stirAt,shredContour} from './paper-vortex.js';
+import {vortexPose,stirAt,shredContour,incomingPaperPose} from './paper-vortex.js';
+import {centeredFormationCamera,formationStartCamera,interpolateArrivalCamera,installArrivalCanvas,restoreArrivalCanvas} from './arrival-camera.js';
+import {withMonsterMouth} from './monster-mouths.js';
 const mix=(a,b,t)=>a+(b-a)*t;
 const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
 const hash=s=>[...s].reduce((n,c)=>Math.imul(n^c.charCodeAt(0),16777619)>>>0,2166136261);
@@ -50,6 +52,7 @@ export class PaperFormation{
   return {parts,eyes,lines};
  }
  update(scene,answers){
+  restoreArrivalCanvas(this.renderer);
   const key=JSON.stringify(answers);if(this.active&&key===this.answerKey)return;this.answerKey=key;
   const now=performance.now();this.previous=new Map(this.visibleParts().map((p,i)=>[p.id,this.placement(p,i,now)]));this.changed=now;
   this.scene=scene;this.answers={...answers};
@@ -68,8 +71,8 @@ export class PaperFormation{
    return {...p,id:`${p.id}~scrap-${i}`,image,w:sw/2,h:sh/2};
   }).filter(Boolean);
   // Whole anatomical scraps remain recognizable between the smaller shreds.
-  const limbs=this.parts.filter(p=>/hand|claw|foot|leg|arm/.test(p.id)&&!p.id.includes('backing')).slice(0,10).map(p=>({...p,kind:'limb'}));
-  const faces=[...this.eyes.slice(0,3),...this.parts.filter(p=>/mouth/.test(p.id)).slice(0,1).map(p=>({...p,kind:'mouth'}))];
+  const limbs=scene.rulesVersion>=7&&!answers.organization?[]:this.parts.filter(p=>/hand|claw|foot|leg|arm/.test(p.id)&&!p.id.includes('backing')).slice(0,10).map(p=>({...p,kind:'limb'}));
+  const faces=[...(scene.rulesVersion>=7&&!answers.gaze?[]:this.eyes.slice(0,3)),...(scene.rulesVersion>=7&&!answers.attitude?[]:this.parts.filter(p=>/mouth/.test(p.id)).slice(0,1).map(p=>({...p,kind:'mouth'})))];
   [...limbs,...faces].forEach((p,i)=>this.cloudParts.splice(Math.min(this.cloudParts.length,4+i*5),0,p));
   if(!this.active){this.view.stop();this.view.start=0;this.view.visible=false;this.active=true;this.begun=now;}
   this.canvas.dataset.formation=JSON.stringify(cloudTraits(answers));this.draw(now);this.run();
@@ -94,13 +97,12 @@ export class PaperFormation{
   const materials=[...this.retained.values()];
   const stir=this.reduced.matches?{energy:0,turn:0}:stirAt(this.impulse,now),materialFrames=[];
   materials.forEach((p,i)=>{const elapsed=this.reduced.matches?2:(now-p.at)/1000;
-   if(elapsed<1.1){const t=elapsed/1.1;g.save();g.globalAlpha=Math.sin(t*Math.PI)*.5;this.stamp(g,p,{x:300+Math.sin(t*Math.PI)*160,y:350-t*110,angle:-.45+t*.9},3.7);g.restore();}
-   const pos=vortexPose(`retained:${p.value}`,i*3+1,parts.length,traits,time+stir.turn,stir.energy,'material');
+   const target=vortexPose(`retained:${p.value}`,i*3+1,parts.length,traits,time+stir.turn,stir.energy,'material'),pos=this.reduced.matches?target:incomingPaperPose(target,elapsed);
    materialFrames.push({p,i:-1,pos});
   });
   // One compatible eye, briefly visible between back and front layers. The
   // source is the actual future eye, never an invented facial configuration.
-  const glimpse=traits.stage>=1&&time%9>3.8&&time%9<6.0&&!this.reduced.matches;
+  const glimpse=(this.scene.rulesVersion<7||!!this.answers.gaze)&&traits.stage>=1&&time%9>3.8&&time%9<6.0&&!this.reduced.matches;
   [...materialFrames,...parts.map((p,i)=>({p,i,pos:this.placement(p,i,now)}))].sort((a,b)=>a.pos.depth-b.pos.depth).forEach(({p,i,pos})=>{
    this.stamp(g,p,pos,pos.size/Math.max(p.w,p.h));
    if(glimpse&&i===Math.floor(parts.length*.66)&&this.eyes.length){const eye=this.eyes[traits.expressive?this.eyes.length-1:0],pulse=Math.sin((time%9-3.8)/2.2*Math.PI);this.stamp(g,eye,{x:traits.expressive?338:300,y:330-12*pulse,angle:Math.sin(time)*.04},pulse*.93);}
@@ -113,16 +115,19 @@ export class PaperFormation{
  async reveal(scene){
   const now=performance.now(),departing=this.visibleParts().map((p,i)=>({p,pos:this.placement(p,i,now)})),positions=new Map(departing.map(({p,pos})=>[p.id,pos]));this.stop();this.canvas.dataset.formation='assembling';
   if(this.reduced.matches||document.hidden){this.canvas.dataset.formation='complete';this.view.visible=true;this.view.update(scene,{immediate:true});return;}
-  const cameraStart=this.camera(),baked=this.bake(scene),all=[...baked.parts,...baked.eyes,...baked.lines],g=this.renderer.ctx;this.renderer.resize(1.5);
+  const startCamera=formationStartCamera(this.canvas.getBoundingClientRect(),this.camera()),endCamera=centeredFormationCamera(scene,innerWidth,innerHeight),dpr=Math.min(1.5,globalThis.devicePixelRatio??1);installArrivalCanvas(this.renderer,endCamera);
+  const baked=this.bake(withMonsterMouth(scene)),all=[...baked.parts,...baked.eyes,...baked.lines],g=this.renderer.ctx;
+  this.canvas.width=Math.round(innerWidth*dpr);this.canvas.height=Math.round(innerHeight*dpr);
   this.cancelled=false;await new Promise(resolve=>{this.resolveReveal=resolve;const frame=time=>{
-   const elapsed=(time-now)/3200;g.setTransform(1.5,0,0,1.5,0,0);g.clearRect(0,0,600,760);g.fillStyle=this.renderer.background;g.fillRect(0,0,600,760);
-   const camera=mix(cameraStart,1,smooth(elapsed));g.translate(300,362);g.scale(camera,camera);g.translate(-300,-362);
+   const elapsed=(time-now)/3200;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,this.canvas.width,this.canvas.height);g.fillStyle=this.renderer.background;g.fillRect(0,0,this.canvas.width,this.canvas.height);
+   const c=interpolateArrivalCamera(startCamera,endCamera,elapsed);g.setTransform(c.scale*dpr,0,0,c.scale*dpr,c.x*dpr,c.y*dpr);
    if(elapsed<.78){const t=Math.min(1,elapsed/.78);departing.filter(({p})=>p.id.includes('~scrap')).forEach(({p,pos},i)=>{const a=elapsed*7+(i%2?.1:-.1),dx=pos.x-300,dy=pos.y-362;this.stamp(g,p,{x:300+(dx*Math.cos(a)-dy*Math.sin(a))*(1-t),y:362+(dx*Math.sin(a)+dy*Math.cos(a))*(1-t),angle:pos.angle+elapsed*5,alpha:1-t},pos.size/Math.max(p.w,p.h)*(1-t*.85));});}
    all.forEach((p,i)=>{const random=rng(hash(p.id)),delay=p.kind==='eye'?.56:.14+random()*.22,t=smooth((elapsed-delay)/(.98-delay)),from=positions.get(p.id)??{x:300+(random()-.5)*270,y:360+(random()-.5)*230,angle:(random()-.5)*2,size:25};const startScale=from.size/Math.max(p.w,p.h),s=mix(startScale,1,t);const lift=Math.sin(t*Math.PI)*(p.kind==='eye'?8:18),curl=Math.sin(t*Math.PI)*(1-t);
     this.stamp(g,p,{x:mix(from.x,p.cx,t)+Math.cos(i*1.8)*curl*85,y:mix(from.y,p.cy,t)-lift+Math.sin(i*1.8)*curl*55,angle:mix(from.angle,0,t)+curl*1.1},s);
    });
    if(elapsed<1&&!this.reduced.matches&&!document.hidden)this.raf=requestAnimationFrame(frame);else resolve();
   };this.raf=requestAnimationFrame(frame);});
-  this.resolveReveal=null;if(this.cancelled)return;this.canvas.dataset.formation='complete';this.view.visible=true;this.view.update(scene,{immediate:true});
+  this.resolveReveal=null;if(this.cancelled){restoreArrivalCanvas(this.renderer);return;}this.canvas.dataset.formation='complete';this.renderer.viewport={width:innerWidth,height:innerHeight,dpr,matrix:[endCamera.scale,0,0,endCamera.scale,endCamera.x,endCamera.y]};this.view.visible=true;this.view.update(scene,{immediate:true});
  }
+ releaseArrival(){restoreArrivalCanvas(this.renderer);}
 }

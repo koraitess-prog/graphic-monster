@@ -7,6 +7,7 @@ import {visualSample} from './samples.js';
 import {decoratePaperTitles} from './paper-titles.js?v=laboratory1';
 import {displayFamily} from './typography.js';
 import {releaseLivingTitles} from './living-title.js';
+import {describeCreature} from './creature-description.js';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function parseCollectionRoute(hash){
  if(hash==='#archive')return {type:'archive',hash};
@@ -47,10 +48,10 @@ export class CollectionScreen{
    if(!record){this.root.innerHTML=`<button class="text-button" data-collection-action="archive">← Archive</button><div class="collection-empty"><h1 tabindex="-1">Not here yet.</h1><p>${esc(failure||'This creature is unavailable.')}</p></div>`;}
    else{
     const number=String(records.length-records.indexOf(record)).padStart(3,'0');
-    const fullStory=String(record.story?.text??record.originalStory?.text??'');
+    const fullStory=describeCreature(record.scene);
     this.root.innerHTML=`<div class="collection-toolbar"><button class="text-button" data-collection-action="archive"><span aria-hidden="true">←</span> Archive</button><span class="dossier-number">SPECIMEN ${number}</span></div><article class="creature-dossier"><div class="dossier-art"><canvas role="img" aria-label="${esc(record.name)}, an archived illustrated creature"></canvas></div><div class="dossier-copy"><p class="dossier-eyebrow">Living anomaly</p><h1 dir="auto" tabindex="-1">${esc(record.name)}</h1><p class="dossier-story" dir="auto">${esc(record.story?.text??record.originalStory?.text)}</p><section class="dossier-identity" aria-label="Design identity"><h2>Design instincts</h2><ul>${identityTraits(record).map(t=>`<li><span class="trait-symbol">${visualSample(t.value)}</span><span>${esc(t.label)}</span></li>`).join('')}</ul></section></div></article>`;
     this.root.querySelector('h1').style.fontFamily=displayFamily(record.name);
-    {const story=this.root.querySelector('.dossier-story'),disclosure=document.createElement('details');disclosure.className='dossier-story field-notes';disclosure.innerHTML=`<summary>Field notes</summary><p dir="auto">${esc(fullStory)}</p>`;story.replaceWith(disclosure);}
+    this.root.querySelector('.dossier-story').textContent=fullStory;
     const art=this.root.querySelector('.dossier-art');art.classList.add('observation-field');
     const controls=document.createElement('div');controls.className='observation-toolbar';controls.innerHTML='<span class="observation-log" role="status">material / settled</span><div><button class="text-button" data-observe="stimulate">Place stimulus</button><button class="text-button" data-observe="pause" aria-pressed="false">Pause</button></div>';art.after(controls);
     this.mountSpecimen(art,record,controls);
@@ -72,7 +73,7 @@ export class CollectionScreen{
   const record=this.records?.find(r=>r.id===id),focus=this.root.querySelector('.specimen-focus');if(!record||!focus)return;
   this.selectedId=id;
   // The record's persistent ID is the catalogue identity; array order is navigation only.
-  focus.innerHTML=`<div class="observation-field"><div class="specimen-identity"><span class="lab-meta">SPECIMEN / ${esc(record.id.slice(0,8))}</span><h2 dir="auto">${esc(record.name)}</h2></div><canvas role="img" aria-label="${esc(record.name)}, living paper specimen"></canvas></div><div class="observation-toolbar"><span class="observation-log" role="status" aria-live="polite">material / settled</span><div><button type="button" class="text-button" data-observe="stimulate">Place stimulus</button><button type="button" class="text-button" data-observe="pause" aria-pressed="false">Pause</button></div></div><details class="field-notes"><summary>Field notes</summary><p dir="auto">${esc(record.story?.text??record.originalStory?.text??'')}</p><button type="button" class="text-button" data-open-record>Design record</button></details>`;
+  focus.innerHTML=`<div class="observation-field"><div class="specimen-identity"><span class="lab-meta">SPECIMEN / ${esc(record.id.slice(0,8))}</span><h2 dir="auto">${esc(record.name)}</h2></div><canvas role="img" aria-label="${esc(record.name)}, living paper specimen"></canvas></div><div class="observation-toolbar"><span class="observation-log" role="status" aria-live="polite">material / settled</span><div><button type="button" class="text-button" data-observe="stimulate">Place stimulus</button><button type="button" class="text-button" data-observe="pause" aria-pressed="false">Pause</button></div></div><div class="archive-brief"><p dir="auto">${esc(describeCreature(record.scene))}</p><button type="button" class="text-button" data-open-record>Design record</button></div>`;
   focus.querySelector('[data-open-record]').addEventListener('click',()=>this.actions.open(record.id));
   for(const button of this.root.querySelectorAll('[data-specimen]'))button.setAttribute('aria-pressed',String(button.dataset.specimen===id));
   this.mountSpecimen(focus.querySelector('.observation-field'),record,focus.querySelector('.observation-toolbar'));
