@@ -287,7 +287,7 @@ export class CreatureView{
      const action=this.familyRequested?.action??this.behaviorSelector?.(this.target,this.event)??signatureAction(this.target,this.event),direction=this.familyRequested?.direction??1;this.familyRequested=null;this.familyAction={action,start:now,duration:(p[action+'Duration']??4)*1000,direction};this.onBehavior?.(action);
     }
     if(now-last>=33){const current=this.familyAction,t=current?Math.min(1,(now-current.start)/current.duration):0;
-     this.scene=familyPose(this.target,current?.action??'breathe',t,(now-this.familyEpoch)/1000,current?.direction??1);this.renderer.draw(this.scene);this.renderer.canvas.dataset.familyAction=current?.action??'breathe';last=now;
+     this.scene=familyPose(this.target,current?.action??'breathe',t,(now-this.familyEpoch)/1000,current?.direction??1);this.renderer.draw(this.posePresenter?.(this.scene,now)??this.scene);this.renderer.canvas.dataset.familyAction=current?.action??'breathe';last=now;
      if(current&&t>=1){this.familyAction=null;this.familyDue=now+p.pause;this.event++;}
     }
     this.raf=requestAnimationFrame(frame);

@@ -2,6 +2,8 @@
 // Anidoodle's seeded composition / bake-once, composite-on-input approach.
 import {rng} from './anidoodle-kit.js';
 import {tornContour} from './paper-library.js';
+import {paintQuestionPaper} from './question-papers.js';
+import {vortexPose,stirAt,shredContour} from './paper-vortex.js';
 const mix=(a,b,t)=>a+(b-a)*t;
 const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
 const hash=s=>[...s].reduce((n,c)=>Math.imul(n^c.charCodeAt(0),16777619)>>>0,2166136261);
@@ -9,28 +11,17 @@ const center=p=>p.reduce((c,q)=>[c[0]+q[0]/p.length,c[1]+q[1]/p.length],[0,0]);
 const path=(g,ps)=>{g.beginPath();g.moveTo(...ps[0]);for(const p of ps.slice(1))g.lineTo(...p);g.closePath();};
 
 export function cloudTraits(answers={}){
- const base={typography:36,grid:30,color:24,shape:20,texture:44}[answers.principle]??26;
+ const base={typography:78,grid:70,color:64,shape:60,texture:86}[answers.principle]??70;
  const count=Math.round((base+(answers.organization==='experiment'?12:answers.organization==='order'?-4:0)+(answers.gaze==='expression'?10:answers.gaze==='clarity'?-4:0))*(answers.density==='rich'?1.65:answers.density==='minimal'?.58:1));
- return {language:answers.principle??'shape',ordered:answers.organization==='order',expressive:answers.gaze==='expression',count:Math.max(14,Math.min(70,count))+(answers.attitude==='playful'?9:answers.attitude==='precise'?-3:0),playful:answers.attitude==='playful',stage:Object.keys(answers).filter(k=>['principle','organization','gaze','density','attitude'].includes(k)).length};
+ return {language:answers.principle??'shape',ordered:answers.organization==='order',expressive:answers.gaze==='expression',count:Math.max(38,Math.min(132,count))+(answers.attitude==='playful'?9:answers.attitude==='precise'?-3:0),playful:answers.attitude==='playful',stage:Object.keys(answers).filter(k=>['principle','organization','gaze','density','attitude'].includes(k)).length};
 }
 export function cloudPlacement(id,index,total,answers={},seconds=0){
- const t=cloudTraits(answers),random=rng(hash(id)),a=index*2.39996+random()*.3,r=Math.sqrt((index+.7)/total),phase=random()*Math.PI*2;
- const speed=t.playful?1.45:answers.attitude==='precise'?.16:.40,orbit=seconds*speed*(t.ordered?.09:.29),drift=Math.sin(seconds*speed+phase),depth=.64+random()*.62;
- let x,y;
- if(t.ordered){const cols=Math.ceil(Math.sqrt(total)),rows=Math.ceil(total/cols);x=(index%cols-(cols-1)/2)*Math.min(66,330/cols);y=(Math.floor(index/cols)-(rows-1)/2)*Math.min(59,296/rows);x+=Math.cos(phase+seconds*.33)*3;y+=drift*3;}
- else{x=Math.cos(a+orbit)*r*174+drift*22;y=Math.sin(a+orbit)*r*158+Math.cos(seconds*.57+phase)*19;x+=19*Math.sin(a*.7);}
- const gesture=t.playful?Math.sin(seconds*1.7+phase)*Math.sin(seconds*.7+phase)*7:Math.sin(seconds*.5+phase)*2;
- if(answers.gaze==='clarity'){if(index===0){x=0;y=-22;}else{x*=1.07;y*=1.07;}}
- if(t.expressive){x+=(index%2?24:-19);y+=Math.sin(index*2.3)*23;}
- const languageScale={typography:1.12,grid:.88,color:1.40,shape:1.46,texture:.78}[t.language];
- const densityScale=answers.density==='minimal'?1.24:answers.density==='rich'?.76:1;
- const hero=answers.gaze==='clarity'&&index===0;
- return {x:300+x,y:362+y+gesture,angle:(t.ordered?Math.sin(phase+seconds*.32)*.025:Math.sin(phase+seconds*.41)*.57)+(t.playful?drift*.18:0),size:Math.min(215,(hero?173:92*languageScale*densityScale)*depth*(index%5===0?1.28:.83)),depth};
+ return vortexPose(id,index,total,cloudTraits(answers),seconds);
 }
 
 export class PaperFormation{
  constructor(view){
-  this.view=view;this.renderer=view.renderer;this.canvas=this.renderer.canvas;this.factory=this.renderer.factory;this.active=false;this.visible=true;this.raf=0;this.parts=[];this.answers={};this.reduced=matchMedia('(prefers-reduced-motion: reduce)');
+  this.view=view;this.renderer=view.renderer;this.canvas=this.renderer.canvas;this.factory=this.renderer.factory;this.active=false;this.visible=true;this.raf=0;this.parts=[];this.answers={};this.retained=new Map();this.reduced=matchMedia('(prefers-reduced-motion: reduce)');
   this.onVisibility=()=>{if(document.hidden&&this.resolveReveal)this.stop();cancelAnimationFrame(this.raf);if(this.active&&!document.hidden)this.run();};
   this.onMotion=()=>{if(this.resolveReveal)this.stop();cancelAnimationFrame(this.raf);if(this.active){this.draw(performance.now());this.run();}};
   document.addEventListener('visibilitychange',this.onVisibility);this.reduced.addEventListener('change',this.onMotion);
@@ -61,54 +52,72 @@ export class PaperFormation{
  update(scene,answers){
   const key=JSON.stringify(answers);if(this.active&&key===this.answerKey)return;this.answerKey=key;
   const now=performance.now();this.previous=new Map(this.visibleParts().map((p,i)=>[p.id,this.placement(p,i,now)]));this.changed=now;
-  this.scene=scene;this.answers={...answers};const baked=this.bake(scene);this.parts=baked.parts;this.eyes=baked.eyes;this.lines=baked.lines;
+  this.scene=scene;this.answers={...answers};
+  for(const [key,value] of Object.entries(answers))if(['principle','organization','gaze','density','attitude'].includes(key)&&this.retained.get(key)?.value!==value){const image=this.factory(600,360);paintQuestionPaper(image,value);this.retained.set(key,{value,image,w:200,h:120,at:now});}
+  for(const key of this.retained.keys())if(!answers[key])this.retained.delete(key);
+  const baked=this.bake(scene);this.parts=baked.parts;this.eyes=baked.eyes;this.lines=baked.lines;
   // Keep anatomical draw order for assembly, seeded order for a stable paper cloud.
   this.cloudParts=this.parts.filter(p=>!p.id.includes('backing')&&!p.id.includes('mask')&&!/hand|claw|mouth|teeth|tooth/.test(p.id)&&!scene.shapes.find(s=>s.id===p.id)?.opening).sort((a,b)=>hash(a.id)-hash(b.id));
   // Fracture actual printed paper into independent scraps. These are cloud-only
   // sprites: assembly still uses the untouched full creature pieces above.
-  const source=this.cloudParts.slice();this.cloudParts=Array.from({length:80},(_,i)=>{
+  const source=this.cloudParts.slice();this.cloudParts=Array.from({length:144},(_,i)=>{
    const p=source[i%source.length];if(!p)return null;
    if(i<source.length)return p;
-   const half=i%3!==0,sw=p.image.width*(half?.56:.82),sh=p.image.height*(half?.76:.48),sx=(i%2)*(p.image.width-sw),sy=(i%3)/2*(p.image.height-sh),image=this.factory(Math.ceil(sw),Math.ceil(sh)),g=image.getContext('2d');path(g,tornContour([[2,2],[sw-2,3],[sw-3,sh-2],[3,sh-3]],i,1.8));g.clip();g.drawImage(p.image,sx,sy,sw,sh,0,0,sw,sh);
+   const sw=p.image.width*(i%3===0?.84:.62),sh=p.image.height*(i%4===0?.32:.78),sx=(i%2)*(p.image.width-sw),sy=(i%3)/2*(p.image.height-sh),image=this.factory(Math.ceil(sw),Math.ceil(sh)),g=image.getContext('2d');path(g,tornContour(shredContour(i).map(([x,y])=>[2+x*(sw-4),2+y*(sh-4)]),i,1.5));g.clip();g.drawImage(p.image,sx,sy,sw,sh,0,0,sw,sh);
    return {...p,id:`${p.id}~scrap-${i}`,image,w:sw/2,h:sh/2};
   }).filter(Boolean);
+  // Whole anatomical scraps remain recognizable between the smaller shreds.
+  const limbs=this.parts.filter(p=>/hand|claw|foot|leg|arm/.test(p.id)&&!p.id.includes('backing')).slice(0,10).map(p=>({...p,kind:'limb'}));
+  const faces=[...this.eyes.slice(0,3),...this.parts.filter(p=>/mouth/.test(p.id)).slice(0,1).map(p=>({...p,kind:'mouth'}))];
+  [...limbs,...faces].forEach((p,i)=>this.cloudParts.splice(Math.min(this.cloudParts.length,4+i*5),0,p));
   if(!this.active){this.view.stop();this.view.start=0;this.view.visible=false;this.active=true;this.begun=now;}
   this.canvas.dataset.formation=JSON.stringify(cloudTraits(answers));this.draw(now);this.run();
  }
  visibleParts(){return (this.cloudParts??[]).slice(0,cloudTraits(this.answers).count);}
  placement(p,i,now){
-  const seconds=this.reduced.matches?0:(now-(this.begun??now))/1000,target=cloudPlacement(p.id,i,this.visibleParts().length,this.answers,seconds),from=this.previous?.get(p.id),raw=this.reduced.matches?1:Math.min(1,(now-this.changed)/1150),t=smooth(raw);
+  const stir=this.reduced.matches?{energy:0,turn:0}:stirAt(this.impulse,now),seconds=this.reduced.matches?0:(now-(this.begun??now))/1000,target=vortexPose(p.id,i,this.visibleParts().length,cloudTraits(this.answers),seconds+stir.turn,stir.energy,p.kind),from=this.previous?.get(p.id),raw=this.reduced.matches?1:Math.min(1,(now-this.changed)/1150),t=smooth(raw);
   const pos=from?Object.fromEntries(Object.entries(target).map(([k,v])=>[k,mix(from[k]??v,v,t)])):{...target,x:mix(300,target.x,t),y:mix(362,target.y,t),size:target.size*t};
   // A deliberate press / unfold, distinct from idle drift; no particle burst.
   const press=Math.sin(raw*Math.PI)*Math.sin(raw*Math.PI*2)*.24;
   pos.x=300+(pos.x-300)*(1+press);pos.y=362+(pos.y-362)*(1-press*.8);pos.angle+=Math.sin(raw*Math.PI)*(i%2?1:-1)*.44;pos.size*=1+Math.sin(raw*Math.PI)*(i%3===0?.50:-.13);return pos;
  }
- stamp(g,p,pos,scale){g.save();g.translate(pos.x,pos.y);g.rotate(pos.angle??0);g.scale(scale,scale);g.drawImage(p.image,-p.w/2,-p.h/2,p.w,p.h);g.restore();}
+ stamp(g,p,pos,scale){g.save();g.translate(pos.x,pos.y);g.rotate(pos.angle??0);g.scale(scale*(pos.fold??1),scale);g.globalAlpha*=pos.alpha??1;g.drawImage(p.image,-p.w/2,-p.h/2,p.w,p.h);g.restore();}
+ stir(input={}){if(!this.active||this.reduced.matches)return;this.impulse={at:performance.now(),energy:Math.max(.12,Math.min(1,input.energy??.3)),spin:input.spin??1};this.draw(this.impulse.at);}
  camera(){return this.canvas.dataset.paperWorkbench==='true'?Math.min(1.05,this.canvas.clientHeight/Math.max(1,this.canvas.clientWidth)*1.3):this.canvas.clientWidth<450?1.4:1.05;}
  draw(now){
   const g=this.renderer.ctx;this.renderer.resize(1.5);g.setTransform(1.5,0,0,1.5,0,0);g.clearRect(0,0,600,760);g.fillStyle=this.renderer.background;g.fillRect(0,0,600,760);
   const camera=this.camera();g.translate(300,362);g.scale(camera,camera);g.translate(-300,-362);
   const parts=this.visibleParts(),time=this.reduced.matches?0:(now-this.begun)/1000,traits=cloudTraits(this.answers);
+  // The actual choices remain legible in the cloud; new paper sweeps behind it.
+  const materials=[...this.retained.values()];
+  const stir=this.reduced.matches?{energy:0,turn:0}:stirAt(this.impulse,now),materialFrames=[];
+  materials.forEach((p,i)=>{const elapsed=this.reduced.matches?2:(now-p.at)/1000;
+   if(elapsed<1.1){const t=elapsed/1.1;g.save();g.globalAlpha=Math.sin(t*Math.PI)*.5;this.stamp(g,p,{x:300+Math.sin(t*Math.PI)*160,y:350-t*110,angle:-.45+t*.9},3.7);g.restore();}
+   const pos=vortexPose(`retained:${p.value}`,i*3+1,parts.length,traits,time+stir.turn,stir.energy,'material');
+   materialFrames.push({p,i:-1,pos});
+  });
   // One compatible eye, briefly visible between back and front layers. The
   // source is the actual future eye, never an invented facial configuration.
-  const glimpse=traits.stage>=3&&time%11>5.2&&time%11<7.1&&!this.reduced.matches;
-  parts.forEach((p,i)=>{
-   const pos=this.placement(p,i,now);this.stamp(g,p,pos,pos.size/Math.max(p.w,p.h));
-   if(glimpse&&i===Math.floor(parts.length*.66)&&this.eyes.length){const eye=this.eyes[traits.expressive?this.eyes.length-1:0],pulse=Math.sin((time%11-5.2)/1.9*Math.PI);this.stamp(g,eye,{x:traits.expressive?338:300,y:330-12*pulse,angle:Math.sin(time)*.04},pulse*.93);}
+  const glimpse=traits.stage>=1&&time%9>3.8&&time%9<6.0&&!this.reduced.matches;
+  [...materialFrames,...parts.map((p,i)=>({p,i,pos:this.placement(p,i,now)}))].sort((a,b)=>a.pos.depth-b.pos.depth).forEach(({p,i,pos})=>{
+   this.stamp(g,p,pos,pos.size/Math.max(p.w,p.h));
+   if(glimpse&&i===Math.floor(parts.length*.66)&&this.eyes.length){const eye=this.eyes[traits.expressive?this.eyes.length-1:0],pulse=Math.sin((time%9-3.8)/2.2*Math.PI);this.stamp(g,eye,{x:traits.expressive?338:300,y:330-12*pulse,angle:Math.sin(time)*.04},pulse*.93);}
   });
+  if(!this.reduced.matches&&traits.stage>=2&&time%14>9&&time%14<11){const hand=this.parts.find(p=>/hand|claw/.test(p.id));if(hand){const t=(time%14-9)/2,pulse=Math.sin(t*Math.PI);this.stamp(g,hand,{x:440+Math.sin(t*5)*9,y:340-pulse*38,angle:-.4+Math.sin(t*10)*.14},pulse*.8);}}
  }
  setVisible(visible){this.visible=visible;this.run();}
  run(){cancelAnimationFrame(this.raf);if(!this.active||!this.visible||this.reduced.matches||document.hidden)return;let last=0;const frame=now=>{if(!this.active)return;if(now-last>32){this.draw(now);last=now;}this.raf=requestAnimationFrame(frame);};this.raf=requestAnimationFrame(frame);}
  stop(){this.active=false;cancelAnimationFrame(this.raf);if(this.resolveReveal)this.cancelled=true;this.resolveReveal?.();this.resolveReveal=null;}
  async reveal(scene){
-  const now=performance.now(),positions=new Map(this.visibleParts().map((p,i)=>[p.id,this.placement(p,i,now)]));this.stop();this.canvas.dataset.formation='assembling';
+  const now=performance.now(),departing=this.visibleParts().map((p,i)=>({p,pos:this.placement(p,i,now)})),positions=new Map(departing.map(({p,pos})=>[p.id,pos]));this.stop();this.canvas.dataset.formation='assembling';
   if(this.reduced.matches||document.hidden){this.canvas.dataset.formation='complete';this.view.visible=true;this.view.update(scene,{immediate:true});return;}
   const cameraStart=this.camera(),baked=this.bake(scene),all=[...baked.parts,...baked.eyes,...baked.lines],g=this.renderer.ctx;this.renderer.resize(1.5);
   this.cancelled=false;await new Promise(resolve=>{this.resolveReveal=resolve;const frame=time=>{
-   const elapsed=(time-now)/2100;g.setTransform(1.5,0,0,1.5,0,0);g.clearRect(0,0,600,760);g.fillStyle=this.renderer.background;g.fillRect(0,0,600,760);
+   const elapsed=(time-now)/3200;g.setTransform(1.5,0,0,1.5,0,0);g.clearRect(0,0,600,760);g.fillStyle=this.renderer.background;g.fillRect(0,0,600,760);
    const camera=mix(cameraStart,1,smooth(elapsed));g.translate(300,362);g.scale(camera,camera);g.translate(-300,-362);
-   all.forEach((p,i)=>{const random=rng(hash(p.id)),delay=p.kind==='eye'?.40:random()*.19,t=smooth((elapsed-delay)/(.98-delay)),from=positions.get(p.id)??{x:300+(random()-.5)*120,y:360+(random()-.5)*90,angle:(random()-.5)*.5,size:0};const startScale=from.size/Math.max(p.w,p.h),s=mix(startScale,1,t);const lift=Math.sin(t*Math.PI)*(p.kind==='eye'?8:18);
-    this.stamp(g,p,{x:mix(from.x,p.cx,t),y:mix(from.y,p.cy,t)-lift,angle:mix(from.angle,0,t)},s);
+   if(elapsed<.78){const t=Math.min(1,elapsed/.78);departing.filter(({p})=>p.id.includes('~scrap')).forEach(({p,pos},i)=>{const a=elapsed*7+(i%2?.1:-.1),dx=pos.x-300,dy=pos.y-362;this.stamp(g,p,{x:300+(dx*Math.cos(a)-dy*Math.sin(a))*(1-t),y:362+(dx*Math.sin(a)+dy*Math.cos(a))*(1-t),angle:pos.angle+elapsed*5,alpha:1-t},pos.size/Math.max(p.w,p.h)*(1-t*.85));});}
+   all.forEach((p,i)=>{const random=rng(hash(p.id)),delay=p.kind==='eye'?.56:.14+random()*.22,t=smooth((elapsed-delay)/(.98-delay)),from=positions.get(p.id)??{x:300+(random()-.5)*270,y:360+(random()-.5)*230,angle:(random()-.5)*2,size:25};const startScale=from.size/Math.max(p.w,p.h),s=mix(startScale,1,t);const lift=Math.sin(t*Math.PI)*(p.kind==='eye'?8:18),curl=Math.sin(t*Math.PI)*(1-t);
+    this.stamp(g,p,{x:mix(from.x,p.cx,t)+Math.cos(i*1.8)*curl*85,y:mix(from.y,p.cy,t)-lift+Math.sin(i*1.8)*curl*55,angle:mix(from.angle,0,t)+curl*1.1},s);
    });
    if(elapsed<1&&!this.reduced.matches&&!document.hidden)this.raf=requestAnimationFrame(frame);else resolve();
   };this.raf=requestAnimationFrame(frame);});

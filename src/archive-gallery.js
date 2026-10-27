@@ -2,6 +2,7 @@ import {supportsFamilyMotion,familyPose,familyProfile,signatureAction} from './f
 import {loadPaintTiles} from './paint-cache.js?v=laboratory1';
 import {MonsterRenderer} from './renderer.js?v=laboratory1';
 import {idlePose,motionProfile} from './motion.js';
+import {observationAction} from './observation.js';
 // One scheduler for the visible collection. Offscreen windows release their pixel
 // buffers. Pigment images are shared globally by the existing renderer.
 export class LivingArchive{
@@ -28,7 +29,10 @@ export class LivingArchive{
   // The next available slot belongs to the visitor, never eighty simultaneous waves.
   const now=performance.now(),active=[...this.items.values()].filter(i=>i.visible&&i.active&&i!==item);
   if(active.length>=2){const yieldItem=active.find(i=>!i.attended)??active.find(i=>!i.visitor);if(yieldItem){yieldItem.active=false;yieldItem.canvas.dataset.motion='rest';yieldItem.due=now+9000;yieldItem.renderer?.draw(yieldItem.record.scene);}}
-  item.requested=true;item.due=now;if(item.active){item.active=false;item.renderer?.draw(item.record.scene);}this.schedule();return true;
+  item.requested=true;item.reaction=observationAction(item.record.scene,['near','sudden','material'][item.index%3],item.event);item.direction=item.index%2?-1:1;item.due=now;
+  const neighbor=[...this.items.values()].find(i=>i.visible&&!i.active&&Math.abs(i.index-item.index)===1);
+  if(neighbor){neighbor.requested=true;neighbor.reaction=observationAction(neighbor.record.scene,'near',neighbor.event);neighbor.direction=neighbor.index<item.index?1:-1;neighbor.due=now+950;}
+  if(item.active){item.active=false;item.renderer?.draw(item.record.scene);}this.schedule();return true;
  }
  stop(){cancelAnimationFrame(this.raf);clearTimeout(this.timer);this.raf=0;this.timer=0;}
  schedule(){
@@ -42,9 +46,9 @@ export class LivingArchive{
   let moving=false,next=Infinity;let slots=Math.max(0,2-[...this.items.values()].filter(i=>i.visible&&i.active).length),idleBudget=2;
   for(const item of [...this.items.values()].sort((a,b)=>Number(b.requested??false)-Number(a.requested??false))){
    if(!item.visible)continue;
-   if(!item.active&&now>=item.due&&slots>0){slots--;item.active=true;item.visitor=!!item.requested;item.requested=false;item.action=item.visitor||!supportsFamilyMotion(item.record.scene)?'greet':signatureAction(item.record.scene,item.event);item.canvas.dataset.motion=item.visitor?'visitor-greeting':'greeting';item.start=now;item.last=0;}
+   if(!item.active&&now>=item.due&&slots>0){slots--;item.active=true;item.visitor=!!item.requested;item.requested=false;item.action=item.visitor?(item.reaction??observationAction(item.record.scene,'near',item.event)):!supportsFamilyMotion(item.record.scene)?'greet':signatureAction(item.record.scene,item.event);item.reaction=null;item.canvas.dataset.motion=item.visitor?'visitor-greeting':'greeting';item.start=now;item.last=0;}
    if(item.active){const family=supportsFamilyMotion(item.record.scene),performanceAction=family?item.action:'greet',notice=family&&item.visitor?320:0,duration=(family?familyProfile(item.record.scene)[performanceAction+'Duration']*1000:motionProfile(item.record.scene,item.event).duration)+notice,t=Math.min(1,(now-item.start)/duration);
-    if(now-item.last>50||t===1){const elapsed=now-item.start,action=elapsed<notice?'look':performanceAction,phase=elapsed<notice?elapsed/notice:Math.max(0,(elapsed-notice)/(duration-notice));item.renderer.draw(family?familyPose(item.record.scene,action,Math.min(1,phase),now/1000+item.index*.7):idlePose(item.record.scene,t,item.event));item.last=now;}
+    if(now-item.last>50||t===1){const elapsed=now-item.start,action=elapsed<notice?'look':performanceAction,phase=elapsed<notice?elapsed/notice:Math.max(0,(elapsed-notice)/(duration-notice));item.renderer.draw(family?familyPose(item.record.scene,action,Math.min(1,phase),now/1000+item.index*.7,item.direction??1):idlePose(item.record.scene,t,item.event));item.last=now;}
     if(t===1){item.active=false;item.canvas.dataset.motion='rest';item.event++;item.due=now+7500+(item.record.seed*71+item.event*631)%9000;}else moving=true;
    }
    if(!item.active){

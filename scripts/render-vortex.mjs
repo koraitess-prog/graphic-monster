@@ -1,0 +1,20 @@
+import {createRequire} from 'node:module';
+import path from 'node:path';
+import {writeFile} from 'node:fs/promises';
+import {generateMonster} from '../src/dna.js';
+import {MonsterRenderer} from '../src/renderer.js';
+import {PaperFormation} from '../src/paper-formation.js';
+const require=createRequire(path.join(path.resolve(process.argv[2]),'loader.cjs'));
+const {createCanvas,Path2D}=require('@napi-rs/canvas');globalThis.Path2D=Path2D;
+globalThis.document={hidden:false,createElement:()=>createCanvas(1,1)};
+const answers={principle:'color',organization:'experiment',gaze:'expression',density:'rich',attitude:'playful'},scene=generateMonster({...answers,seed:13},6),canvas=createCanvas(900,1140);
+canvas.dataset={paperWorkbench:'true'};canvas.clientWidth=600;canvas.clientHeight=560;
+const renderer=new MonsterRenderer(canvas,{scale:1.5,canvasFactory:createCanvas,background:'#202426'}),formation=Object.create(PaperFormation.prototype);
+Object.assign(formation,{view:{stop(){},visible:true},renderer,canvas,factory:createCanvas,active:false,visible:true,parts:[],answers:{},retained:new Map(),reduced:{matches:false},run(){}});
+const original=JSON.stringify(scene);formation.update(scene,answers);formation.begun=0;formation.changed=-4000;for(const p of formation.retained.values())p.at=-4000;
+const sheet=createCanvas(1800,760),g=sheet.getContext('2d');g.fillStyle='#202426';g.fillRect(0,0,1800,760);
+let worst=0;
+for(const [i,time]of [1400,4800,7200].entries()){const start=performance.now();formation.draw(time);worst=Math.max(worst,performance.now()-start);g.drawImage(canvas,i*600,0,600,760);}
+if(JSON.stringify(scene)!==original)throw Error('Saved art mutated');
+await writeFile('qa/refinement/vortex-studies.png',sheet.toBuffer('image/png'));
+console.log(JSON.stringify({sprites:formation.visibleParts().length,anatomy:formation.visibleParts().filter(p=>p.kind!=='paper').length,worstNativeFrameMs:worst,unchangedScene:true}));

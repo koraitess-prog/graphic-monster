@@ -5,9 +5,12 @@ import {rng} from './anidoodle-kit.js';
 // Distinct silhouettes and negative spaces, printed with the creatures' material.
 const cache=new Map(),cream='#e8ddba',ochre='#d6a333',ink='#151a1b',pink='#ce6587',teal='#519f7d',blue='#5765c4',red='#f05226';
 const factory=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;};
-export function drawQuestionObject(g,value,makeCanvas=factory){
+const contextStocks=new WeakMap();
+export function drawQuestionObject(g,value,makeCanvas=factory,phase=0){
+ const routes={'route-built':['typography','grid'],'route-sensory':['color','texture'],'route-marks':['shape','texture']};
+ if(routes[value]){routes[value].forEach((v,i)=>{g.save();g.translate(i?72:0,i?34:0);g.scale(.67,.67);drawQuestionObject(g,v,makeCanvas,phase);g.restore();});return;}
  const seed=[...value].reduce((n,c)=>n*31+c.charCodeAt(0),7)>>>0,random=rng(seed);let piece=0;
- const stocks=new Map();
+ if(!contextStocks.has(g))contextStocks.set(g,new Map());const stocks=contextStocks.get(g);
  const paint=(color,pattern)=>{const key=color+'/'+pattern;if(stocks.has(key))return stocks.get(key);const {tile,transform}=engravingTile(makeCanvas,{color,texture:.25,printRevision:3,grainPhase:2,grainAngle:-7,paperPattern:pattern});const fill=g.createPattern(tile,'repeat');fill.setTransform(transform);stocks.set(key,fill);return fill;};
  const outline=points=>{g.beginPath();tornContour(points,seed+piece++, .65).forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();};
  const paper=(points,color=cream,pattern)=>{outline(points);g.fillStyle=paint(color,pattern);g.fill();};
@@ -16,6 +19,16 @@ export function drawQuestionObject(g,value,makeCanvas=factory){
  const ribbon=(points,width,color)=>{const side=sign=>points.map(([x,y],i)=>{const p=points[Math.max(0,i-1)],q=points[Math.min(points.length-1,i+1)],dx=q[0]-p[0],dy=q[1]-p[1],len=Math.hypot(dx,dy)||1;return [x-dy/len*width*sign/2,y+dx/len*width*sign/2];});paper([...side(1),...side(-1).reverse()],color);};
  const cut=(family,index,x,y,w,h,color,angle=0)=>paper(paperCutout(family,index,{x,y,width:w,height:h,angle}).points,color,family==='typography'?'newsprint':undefined);
  g.save();
+ // Deform the material in its own idiom; the marks move with the paper.
+ if(phase){const s=Math.sin(phase*Math.PI*2);g.translate(100,60);
+  if(value==='typography')g.scale(1-.12*s,1+.06*s);
+  else if(value==='grid'||value==='order')g.transform(1,0,.14*s,1,0,0);
+  else if(value==='color')g.scale(1+.11*s,1-.08*s);
+  else if(value==='texture'||value==='rich')g.rotate(s*.065);
+  else if(value==='shape'||value==='playful'||value==='experiment')g.transform(1,s*.12,-s*.12,1,0,-4*s);
+  else g.scale(1+.07*s,1-.07*s);
+  g.translate(-100,-60);
+ }
  if(value==='typography'){
   paper([[24,99],[54,18],[70,18],[99,99],[76,99],[62,51],[44,99]],cream);strip(43,70,37,11,cream);
   cut('typography',2,111,62,57,80,pink);strip(87,22,13,78,pink);strip(145,49,12,51,ochre);blob(151,30,8,8,ochre);
@@ -63,4 +76,21 @@ export function paintQuestionPaper(canvas,value){
  if(!cache.has(value)){const plate=factory(600,360),g=plate.getContext('2d');g.scale(3,3);drawQuestionObject(g,value);cache.set(value,plate);}
  target.drawImage(cache.get(value),0,0);
 }
-export function mountQuestionPapers(root){for(const c of root.querySelectorAll('canvas[data-paper-choice]'))paintQuestionPaper(c,c.dataset.paperChoice);}
+export function mountQuestionPapers(root){
+ const events=new AbortController(),media=matchMedia('(prefers-reduced-motion:reduce)'),jobs=new Map();
+ const stop=c=>{cancelAnimationFrame(jobs.get(c));jobs.delete(c);paintQuestionPaper(c,c.dataset.paperChoice);};
+ for(const c of root.querySelectorAll('canvas[data-paper-choice]')){
+  paintQuestionPaper(c,c.dataset.paperChoice);const button=c.closest('button');if(!button)continue;
+  let hovering=false;
+  const play=()=>{if(media.matches||document.hidden||jobs.has(c))return;const start=performance.now();let last=0;
+   const frame=now=>{if(!c.isConnected||document.hidden||media.matches){stop(c);return;}const elapsed=(now-start)/900;
+    if(elapsed>=1&&!hovering){stop(c);return;}
+    if(now-last>40){const g=c.getContext('2d');g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,c.width,c.height);g.scale(3,3);drawQuestionObject(g,c.dataset.paperChoice,factory,elapsed);last=now;}
+    jobs.set(c,requestAnimationFrame(frame));};jobs.set(c,requestAnimationFrame(frame));};
+  const on=(event,fn)=>button.addEventListener(event,fn,{signal:events.signal});
+  on('pointerenter',e=>{if(e.pointerType!=='touch'){hovering=true;play();}});on('focus',()=>{hovering=true;play();});
+  on('pointerleave',()=>hovering=false);on('blur',()=>hovering=false);on('pointerdown',()=>{hovering=false;play();});
+ }
+ const halt=()=>{for(const c of jobs.keys())stop(c);};document.addEventListener('visibilitychange',halt,{signal:events.signal});media.addEventListener('change',halt,{signal:events.signal});
+ return ()=>{events.abort();halt();};
+}

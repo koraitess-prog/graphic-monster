@@ -14,10 +14,11 @@ import {CollectionScreen,parseCollectionRoute} from './collection-screen.js?v=la
 import {decoratePaperTitles} from './paper-titles.js?v=laboratory1';
 import {mountQuestionPapers,paintQuestionPaper} from './question-papers.js';
 import {enablePaperDrag} from './paper-drag.js';
-import {mountObservation} from './observation.js';
+import {mountObservation,rememberVisitor} from './observation.js';
 import {playRevealFlight} from './reveal-flight.js?v=arrival2';
 import {createRevealPapers} from './reveal-papers.js?v=arrival2';
 import {familyProfile} from './family-motion.js';
+import {materialQuestion,nextMaterialRoute,restoreMaterialRoute} from './material-flow.js';
 
 const app=document.querySelector('#app'),copy=document.querySelector('#copy'),canvas=document.querySelector('#monster');
 const announcement=document.querySelector('#announcement'),dialog=document.querySelector('#name-dialog');
@@ -28,9 +29,13 @@ const freshSeed=()=>crypto.getRandomValues(new Uint32Array(1))[0];
 const escape=text=>String(text??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const labelFor=(q,value)=>q.options.find(o=>o[0]===value)?.[1];
 let state=initialState(),advanceTimer,renameFocus,transitioning=false,answerLocked=false,revealPlaying=false,revealController=null,observation=null;
+let materialRoute=[],choiceMotionCleanup;
+try{materialRoute=restoreMaterialRoute(sessionStorage.getItem('graphic-monster:material-route'));}catch{}
+const currentQuestion=()=>state.step===0?materialQuestion(materialRoute):QUESTIONS[state.step];
 let archiveDB,records=[],archiveFailure='',archiveQueue=Promise.resolve();
 const sharedArchive=new SharedArchive(archiveConfig);let sharedRecords=[],refreshingArchive=false;
 const afterlife=document.querySelector('#afterlife');
+document.addEventListener('pointermove',e=>rememberVisitor(e.clientX/Math.max(1,innerWidth),e.clientY/Math.max(1,innerHeight)),{passive:true});
 const collection=new CollectionScreen(document.querySelector('#collection-screen'),{back:()=>returnToExperience(),create:()=>{returnToExperience();dispatch({type:'RESET'},{art:true});},open:id=>{location.hash=id?'creature='+encodeURIComponent(id):'archive';}});
 try{state=restoreState(sessionStorage.getItem(storageKey)??sessionStorage.getItem('design-monsters:experience:v1'));}catch{}
 function applyHash(){if(state.screen==='reveal')return false;const match=location.hash.match(/^#dna=([0-4][01]{4})$/);if(!match)return false;const answers=decodeDNA(match[1]);const changed=encodeDNA(state.answers)!==match[1];state={...state,answers,step:4,story:changed?null:state.story};state=state.name?reducer(state,{type:'REVEAL'}):{...state,screen:'intro'};return true;}
@@ -41,7 +46,7 @@ const previewScene=()=>state.screen==='intro'?(state.rulesVersion>=4?paperPrelud
 
 const view=new CreatureView(canvas,previewScene());
 const formation=new PaperFormation(view);
-const paperDrag=enablePaperDrag({root:copy,target:canvas,reduced,announce,canStart:()=>state.screen==='question'&&!transitioning&&!answerLocked,onDrop:value=>choose(value,{transfer:false})});
+const paperDrag=enablePaperDrag({root:copy,target:canvas,reduced,announce,canStart:()=>state.screen==='question'&&!transitioning&&!answerLocked,onRelease:impulse=>formation.stir(impulse),onDrop:value=>choose(value,{transfer:false})});
 function warmPaint(scene){void loadPaintTiles(scene).then(()=>{if(!app.hidden&&!formation.active&&!transitioning)view.renderer.draw(view.pose());});}
 warmPaint(previewScene());
 const stageVisibility=new IntersectionObserver(entries=>{if(transitioning||observation)return;if(formation.active)formation.setVisible(entries[0].isIntersecting);else view.setVisible(entries[0].isIntersecting);},{threshold:.05});stageVisibility.observe(canvas);
@@ -56,6 +61,7 @@ function progress(){return `<div class="dimension-nav" role="progressbar" aria-l
 function answer(option,index){const[value,label]=option,selected=state.answers[QUESTIONS[state.step].key]===value;return `<button type="button" class="choice${selected?' selected':''}" data-value="${value}" aria-pressed="${selected}" aria-label="${label}"><span class="choice-art"><canvas data-paper-choice="${value}" aria-hidden="true"></canvas></span><span class="choice-label">${label}</span><span class="choice-number" aria-hidden="true">0${index+1}</span><span class="choice-check" aria-hidden="true">✓</span></button>`;}
 function render({focus=false,selection=false}={}){
  observation?.destroy();observation=null;
+ choiceMotionCleanup?.();choiceMotionCleanup=null;
  paperDrag.cancel();
  document.body.classList.toggle('intro-paper',state.screen==='intro'&&!parseCollectionRoute(location.hash));
  document.body.classList.toggle('question-paper',state.screen==='question'&&!parseCollectionRoute(location.hash));
@@ -71,9 +77,9 @@ function render({focus=false,selection=false}={}){
    document.querySelector('#stage-note').textContent='';
    canvas.setAttribute('aria-label','An amorphous living painting. No face or limbs yet.');
  }else if(state.screen==='question'){
-   const q=QUESTIONS[state.step];
+   const q=currentQuestion();
    copy.innerHTML=`<h1 class="sr-only" tabindex="-1">${q.title.replace('\n',' ')} Drag one paper object into the living cloud. Keyboard: choose an object and press Enter.</h1><div class="sr-only">${progress()}</div><div class="choices ${q.options.length===5?'five':'two'}" role="group" aria-label="Paper objects">${q.options.map(answer).join('')}</div>`;
-   mountQuestionPapers(copy);
+   choiceMotionCleanup=mountQuestionPapers(copy);
    document.querySelector('#stage-note').textContent='';
    canvas.setAttribute('aria-label',`${state.name}, evolving through your design decisions. ${QUESTIONS.filter(q=>state.answers[q.key]).map(q=>labelFor(q,state.answers[q.key])).join(', ')}.`);
  }else{
@@ -96,7 +102,7 @@ function render({focus=false,selection=false}={}){
  ledger.setAttribute('aria-label',`${QUESTIONS.filter(q=>state.answers[q.key]).length} of 5 material samples retained`);
  for(const sample of ledger.querySelectorAll('canvas'))paintQuestionPaper(sample,sample.dataset.retained);
  document.querySelector('#material-step').textContent=state.screen==='question'?`MATERIAL / ${String(state.step+1).padStart(2,'0')}`:'';
- if(state.screen==='reveal'&&!revealPlaying)observation=mountObservation(app.querySelector('.studio'),view,{log:copy.querySelector('.observation-log'),pause:copy.querySelector('[data-observe="pause"]'),stimulate:copy.querySelector('[data-observe="stimulate"]'),enabled:()=>!app.hidden&&!revealPlaying});
+ if(state.screen==='reveal'&&!revealPlaying)observation=mountObservation(app.querySelector('.studio'),view,{meet:true,enabled:()=>!app.hidden&&!revealPlaying});
  window.dispatchEvent(new CustomEvent('graphic-monster:intro',{detail:state.screen==='intro'&&!parseCollectionRoute(location.hash)}));
  if(focus){
    copy.querySelector('h1')?.focus({preventScroll:true});
@@ -191,12 +197,17 @@ async function enterReveal(next,{focus=true}={}){
  }
 }
 function dispatch(event,{focus=true,art=false}={}){
+ if(event.type==='RESET'){materialRoute=[];try{sessionStorage.removeItem('graphic-monster:material-route');}catch{}}
  clearTimeout(advanceTimer);answerLocked=false;const previous=state.screen,next=reducer(state,event);
  if(previous==='question'&&next.screen==='reveal'){enterReveal(next,{focus});return;}
  state=next;render({focus});if(previous!=='reveal'&&state.screen==='reveal')window.scrollTo({top:0,behavior:'instant'});if(art&&state.screen!=='question'){const scene=previewScene();view.update(scene,{immediate:state.screen==='intro'});warmPaint(scene);}
 }
 function choose(value,{transfer=true}={}){
  if(transitioning||answerLocked)return;
+ if(transfer)formation.stir({energy:.3,spin:1});
+ const options=currentQuestion().options;if(!options.some(o=>o[0]===value))return;
+ const route=state.step===0?nextMaterialRoute(materialRoute,value):null;
+ if(route){materialRoute=route;try{sessionStorage.setItem('graphic-monster:material-route',JSON.stringify(route));}catch{}render({focus:true});announce('Choose the next material.');return;}
  answerLocked=true;
  if(transfer)transferMaterial(copy.querySelector(`[data-value="${value}"] .choice-art`));
  clearTimeout(advanceTimer);state=reducer(state,{type:'SELECT',value});const q=QUESTIONS[state.step];render({selection:true});announce(`${labelFor(q,value)} selected. ${feedback[state.step]}`);

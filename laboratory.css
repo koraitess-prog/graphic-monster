@@ -171,3 +171,8 @@ body .screen-reveal[data-reveal-phase=complete] .observation-identity,body .scre
 body.arrival-in-progress .screen-reveal.arrival-stage .observation-identity{position:absolute;left:var(--flight-identity-left);top:calc(var(--flight-distance) + var(--flight-identity-top));width:var(--flight-identity-width);visibility:visible;opacity:1;animation:none;pointer-events:none}
 body .screen-reveal[data-reveal-phase=complete] .observation-identity{animation:none}
 @keyframes observation-arrives{from{opacity:0}to{opacity:1}}
+/* A paper toy is the visitor's physical cue; no new toolbar. */
+.observation-stimulus{width:25px;height:18px;background:#d6a333 url('./assets/intro-title.webp') 18% 42%/350px auto;clip-path:polygon(2% 17%,42% 0,98% 14%,86% 96%,9% 82%);transition:opacity .3s;transform-origin:center}
+body .screen-question:not(.reveal-air) .choices.two{max-width:660px;gap:40px}
+body .screen-question:not(.reveal-air) .choices.two .choice-art{max-width:290px}
+@media(max-width:680px){body .screen-question:not(.reveal-air) .choices.two{gap:12px;max-width:100%;grid-template-rows:155px}body .screen-question:not(.reveal-air) .choices.two .choice{height:155px}.observation-stimulus{width:20px;height:15px}}
