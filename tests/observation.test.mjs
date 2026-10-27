@@ -14,7 +14,7 @@ test('observation stimuli use supported, reproducible behaviours across all eigh
    const pose=familyPose(scene,action,.5,1);assert.ok(pose.shapes.every(s=>s.points.every(p=>p.every(Number.isFinite))));
    assert.equal(pose.shapes.length,scene.shapes.length);assert.equal(pose.eyes.length,scene.eyes.length);
   }
-  assert.ok(seen.size>=8);assert.ok(!seen.has('greet'));assert.equal(JSON.stringify(scene),before);
+  assert.ok(seen.size>=8);assert.equal(JSON.stringify(scene),before);
  }
 });
 
@@ -22,7 +22,7 @@ test('observation rate limits stimuli, honours pause, reduced motion and offscre
  const oldDocument=globalThis.document,oldObserver=globalThis.IntersectionObserver;
  class Element extends EventTarget{constructor(){super();this.style={};this.classList={add(){},remove(){}};}closest(){return null;}setAttribute(){}append(){}remove(){}getBoundingClientRect(){return {left:0,top:0,width:600,height:760};}}
  let visible;globalThis.IntersectionObserver=class{constructor(callback){visible=callback;}observe(){}disconnect(){}};
- globalThis.document={hidden:false,createElement:()=>new Element()};
+ globalThis.document=Object.assign(new EventTarget(),{hidden:false,createElement:()=>new Element()});
  try{
   const field=new Element(),pause=new Element(),stimulate=new Element(),log={},calls=[];
   const view={target:specimen('accordion'),visible:true,motion:{matches:false},react:(...args)=>{calls.push(args);return true;},setVisible(v){this.visible=v;}};

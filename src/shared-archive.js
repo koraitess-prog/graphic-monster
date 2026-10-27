@@ -16,6 +16,9 @@ export function combineArchives(local,shared){
  // A published snapshot is authoritative; local legacy scenes remain untouched.
  return [...new Map([...local,...shared].map(r=>[r.id,r])).values()].sort((a,b)=>b.createdAt-a.createdAt);
 }
+export function currentCollection(records,config){
+ const cutoff=config.collectionStartedAt??0;return records.filter(r=>Number.isFinite(r.createdAt)&&r.createdAt>=cutoff);
+}
 export class SharedArchive{
  constructor(config,{fetcher=globalThis.fetch.bind(globalThis),storage}={}){
   if(storage===undefined)try{storage=globalThis.localStorage;}catch{storage=null;}

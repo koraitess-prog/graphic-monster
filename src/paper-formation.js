@@ -54,7 +54,8 @@ export class PaperFormation{
   const now=performance.now();this.previous=new Map(this.visibleParts().map((p,i)=>[p.id,this.placement(p,i,now)]));this.changed=now;
   this.scene=scene;this.answers={...answers};
   for(const [key,value] of Object.entries(answers))if(['principle','organization','gaze','density','attitude'].includes(key)&&this.retained.get(key)?.value!==value){const image=this.factory(600,360);paintQuestionPaper(image,value);this.retained.set(key,{value,image,w:200,h:120,at:now});}
-  for(const key of this.retained.keys())if(!answers[key])this.retained.delete(key);
+  for(const key of this.retained.keys())if(!answers[key]&&!key.startsWith('route:'))this.retained.delete(key);
+  if(!Object.keys(answers).length&&!this.active)this.retained.clear();
   const baked=this.bake(scene);this.parts=baked.parts;this.eyes=baked.eyes;this.lines=baked.lines;
   // Keep anatomical draw order for assembly, seeded order for a stable paper cloud.
   this.cloudParts=this.parts.filter(p=>!p.id.includes('backing')&&!p.id.includes('mask')&&!/hand|claw|mouth|teeth|tooth/.test(p.id)&&!scene.shapes.find(s=>s.id===p.id)?.opening).sort((a,b)=>hash(a.id)-hash(b.id));
@@ -83,6 +84,7 @@ export class PaperFormation{
  }
  stamp(g,p,pos,scale){g.save();g.translate(pos.x,pos.y);g.rotate(pos.angle??0);g.scale(scale*(pos.fold??1),scale);g.globalAlpha*=pos.alpha??1;g.drawImage(p.image,-p.w/2,-p.h/2,p.w,p.h);g.restore();}
  stir(input={}){if(!this.active||this.reduced.matches)return;this.impulse={at:performance.now(),energy:Math.max(.12,Math.min(1,input.energy??.3)),spin:input.spin??1};this.draw(this.impulse.at);}
+ keepRoute(value){const key='route:'+value;if(this.retained.has(key))return;const image=this.factory(600,360);paintQuestionPaper(image,value);this.retained.set(key,{value,image,w:200,h:120,at:performance.now()});if(this.reduced.matches)this.draw(performance.now());}
  camera(){return this.canvas.dataset.paperWorkbench==='true'?Math.min(1.05,this.canvas.clientHeight/Math.max(1,this.canvas.clientWidth)*1.3):this.canvas.clientWidth<450?1.4:1.05;}
  draw(now){
   const g=this.renderer.ctx;this.renderer.resize(1.5);g.setTransform(1.5,0,0,1.5,0,0);g.clearRect(0,0,600,760);g.fillStyle=this.renderer.background;g.fillRect(0,0,600,760);

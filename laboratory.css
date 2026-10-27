@@ -176,3 +176,19 @@ body .screen-reveal[data-reveal-phase=complete] .observation-identity{animation:
 body .screen-question:not(.reveal-air) .choices.two{max-width:660px;gap:40px}
 body .screen-question:not(.reveal-air) .choices.two .choice-art{max-width:290px}
 @media(max-width:680px){body .screen-question:not(.reveal-air) .choices.two{gap:12px;max-width:100%;grid-template-rows:155px}body .screen-question:not(.reveal-air) .choices.two .choice{height:155px}.observation-stimulus{width:20px;height:15px}}
+/* The creature owns the frame; the essential actions stay reachable. */
+body .screen-reveal .observation-identity{z-index:12}
+.specimen-actions{display:flex;flex-direction:column;align-items:flex-start;gap:14px;margin-top:26px}
+.specimen-new{font:inherit;font-size:12px;padding:13px 19px;min-height:46px;background:#e8ddba;color:#202426;border:1px solid #e8ddba;cursor:pointer}
+.specimen-new:hover,.specimen-new:focus-visible{background:#d6a333;border-color:#d6a333}
+body .specimen-play-toggle{font-size:10px;color:#b9c4b2;min-height:36px;padding:4px 0;background:none;border:0}
+body .screen-reveal .specimen-actions[hidden]{display:none}
+body .site-header{position:relative;z-index:18}
+body.creature-closeup .screen-reveal .reveal-name,body.creature-closeup .screen-reveal .specimen-description{visibility:hidden}
+body.creature-closeup .specimen-actions{position:fixed;right:22px;bottom:22px;align-items:flex-end;z-index:24;margin:0}
+body.creature-playing #monster{will-change:transform;pointer-events:auto}
+body.arrival-in-progress .specimen-actions{visibility:hidden;pointer-events:none}
+@media(prefers-reduced-motion:reduce){.specimen-play-toggle{display:none}body.creature-playing #monster{will-change:auto}}
+body.creature-playing{overflow-x:clip}
+body .specimen-play-toggle{font-size:12px;min-height:44px}
+.specimen-new{max-width:100%;white-space:normal;text-align:center}

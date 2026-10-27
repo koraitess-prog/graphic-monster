@@ -8,7 +8,7 @@ import {loadPaintTiles} from './paint-cache.js?v=laboratory1';
 import {displayFamily} from './typography.js';
 import {drawWordmark} from './wordmark.js';
 import {openArchive,makeRecord,mergeRecord} from './archive.js?v=arrival1';
-import {SharedArchive,combineArchives} from './shared-archive.js';
+import {SharedArchive,combineArchives,currentCollection} from './shared-archive.js';
 import {archiveConfig} from './archive-config.js';
 import {CollectionScreen,parseCollectionRoute} from './collection-screen.js?v=laboratory1';
 import {decoratePaperTitles} from './paper-titles.js?v=laboratory1';
@@ -86,7 +86,7 @@ function render({focus=false,selection=false}={}){
    state=reducer(state,{type:'REVEAL'});
    const story=state.story.text;
    const nameSize=22;
-   copy.innerHTML=`<div class="observation-identity"><h1 class="reveal-name" style="--name-size:${nameSize}px" tabindex="-1" dir="auto">${escape(state.name)}</h1><p class="specimen-description" dir="auto">${escape(story)}</p></div>`;
+   copy.innerHTML=`<div class="observation-identity"><h1 class="reveal-name" style="--name-size:${nameSize}px" tabindex="-1" dir="auto">${escape(state.name)}</h1><p class="specimen-description" dir="auto">${escape(story)}</p><div class="specimen-actions"><button type="button" class="specimen-new" data-action="reset">Create new monster</button><button type="button" class="text-button specimen-play-toggle" aria-pressed="false">Pause play</button></div></div>`;
    fitRevealName();
    document.querySelector('#full-story').replaceChildren();
    void syncArchive(structuredClone(state));
@@ -102,7 +102,7 @@ function render({focus=false,selection=false}={}){
  ledger.setAttribute('aria-label',`${QUESTIONS.filter(q=>state.answers[q.key]).length} of 5 material samples retained`);
  for(const sample of ledger.querySelectorAll('canvas'))paintQuestionPaper(sample,sample.dataset.retained);
  document.querySelector('#material-step').textContent=state.screen==='question'?`MATERIAL / ${String(state.step+1).padStart(2,'0')}`:'';
- if(state.screen==='reveal'&&!revealPlaying)observation=mountObservation(app.querySelector('.studio'),view,{meet:true,enabled:()=>!app.hidden&&!revealPlaying});
+ if(state.screen==='reveal'&&!revealPlaying)observation=mountObservation(app.querySelector('.studio'),view,{meet:true,play:true,pause:copy.querySelector('.specimen-play-toggle'),enabled:()=>!app.hidden&&!revealPlaying});
  window.dispatchEvent(new CustomEvent('graphic-monster:intro',{detail:state.screen==='intro'&&!parseCollectionRoute(location.hash)}));
  if(focus){
    copy.querySelector('h1')?.focus({preventScroll:true});
@@ -136,7 +136,7 @@ async function routeCollection(){
  window.dispatchEvent(new CustomEvent('graphic-monster:intro',{detail:false}));
  clearTimeout(advanceTimer);formation.stop();app.hidden=true;afterlife.hidden=true;headerName.hidden=true;view.setVisible(false);
  document.querySelector('.header-actions [data-action="archive"]').hidden=true;
- collection.show(route,records,archiveFailure,sharedRecords.length);
+ collection.show(route,currentCollection(records,archiveConfig),archiveFailure,currentCollection(sharedRecords,archiveConfig).length);
  await refreshArchive();
 }
 async function refreshArchive(){
@@ -148,7 +148,7 @@ async function refreshArchive(){
   sharedRecords=await sharedArchive.list();archiveFailure='';
   for(const record of local){
    const published=sharedRecords.find(r=>r.id===record.id);
-   if(record.createdAt>=archiveConfig.enabledAt&&(!published||JSON.stringify(published.story)!==JSON.stringify(record.story))){
+   if(record.createdAt>=Math.max(archiveConfig.enabledAt,archiveConfig.collectionStartedAt??0)&&(!published||JSON.stringify(published.story)!==JSON.stringify(record.story))){
     try{await sharedArchive.save(record);sharedRecords=combineArchives(sharedRecords,[record]);}
     catch{archiveFailure='Saved here. Sharing unavailable; reopen Archive to retry.';}
    }
@@ -156,7 +156,7 @@ async function refreshArchive(){
   records=combineArchives(local,sharedRecords);
  }catch(error){console.warn('Shared archive:',error.message);archiveFailure='Shared archive unavailable. Showing saved creatures.';}
  finally{refreshingArchive=false;}
- const route=parseCollectionRoute(location.hash);if(route)collection.show(route,records,archiveFailure,sharedRecords.length);
+ const route=parseCollectionRoute(location.hash);if(route)collection.show(route,currentCollection(records,archiveConfig),archiveFailure,currentCollection(sharedRecords,archiveConfig).length);
 }
 // Refresh only while the collection is visible, without interrupting a specimen.
 setInterval(()=>{if(!document.hidden&&location.hash==='#archive')void refreshArchive();},30000);
@@ -167,7 +167,7 @@ async function syncArchive(snapshot){
  archiveQueue=archiveQueue.then(async()=>{
   let localSaved=false;
   if(archiveDB)try{await archiveDB.save(record);localSaved=true;}catch{}
-  try{await sharedArchive.save(record);archiveFailure='';}
+  try{if(record.createdAt>=Math.max(archiveConfig.enabledAt,archiveConfig.collectionStartedAt??0))await sharedArchive.save(record);archiveFailure='';}
   catch(error){console.warn('Shared archive save:',error.message);archiveFailure=localSaved?'Saved here. Sharing unavailable; retry from Archive.':'This creature could not be saved. Your existing collection is retained.';}
  });await archiveQueue;
 }
@@ -207,7 +207,11 @@ function choose(value,{transfer=true}={}){
  if(transfer)formation.stir({energy:.3,spin:1});
  const options=currentQuestion().options;if(!options.some(o=>o[0]===value))return;
  const route=state.step===0?nextMaterialRoute(materialRoute,value):null;
- if(route){materialRoute=route;try{sessionStorage.setItem('graphic-monster:material-route',JSON.stringify(route));}catch{}render({focus:true});announce('Choose the next material.');return;}
+ if(route){
+  answerLocked=true;const source=copy.querySelector(`[data-value="${value}"] .choice-art`);if(transfer)transferMaterial(source);formation.keepRoute(value);
+  copy.querySelectorAll('.choice').forEach(b=>b.disabled=true);
+  advanceTimer=setTimeout(()=>{materialRoute=route;try{sessionStorage.setItem('graphic-monster:material-route',JSON.stringify(route));}catch{}answerLocked=false;render({focus:true});announce('Choose the next material.');},reduced.matches?0:650);return;
+ }
  answerLocked=true;
  if(transfer)transferMaterial(copy.querySelector(`[data-value="${value}"] .choice-art`));
  clearTimeout(advanceTimer);state=reducer(state,{type:'SELECT',value});const q=QUESTIONS[state.step];render({selection:true});announce(`${labelFor(q,value)} selected. ${feedback[state.step]}`);

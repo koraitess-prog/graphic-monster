@@ -78,7 +78,7 @@ export class MonsterRenderer{
    this.canvas=canvas;this.scale=scale;canvas.width=600*scale;canvas.height=760*scale;
    this.ctx=canvas.getContext('2d');this.factory=canvasFactory??((w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;});this.patterns=new Map();this.paperRasters=new WeakMap();
  }
- resize(scale){if(this.scale===scale)return;this.scale=scale;this.canvas.width=600*scale;this.canvas.height=760*scale;}
+ resize(scale){if(this.scale===scale&&this.canvas.width===600*scale&&this.canvas.height===760*scale)return;this.scale=scale;this.canvas.width=600*scale;this.canvas.height=760*scale;}
  pattern(style){
    if(this.paintVersion!==paintVersion){this.patterns.clear();this.paintVersion=paintVersion;}
    const key=styleKey(style);if(this.patterns.has(key))return this.patterns.get(key);
@@ -179,7 +179,10 @@ export class MonsterRenderer{
  }
  draw(scene){
    scene=withMonsterMouth(scene);
-   const ctx=this.ctx;ctx.setTransform(this.scale,0,0,this.scale,0,0);ctx.clearRect(0,0,600,760);ctx.fillStyle=this.background;ctx.fillRect(0,0,600,760);ctx.lineCap='round';ctx.lineJoin='round';
+   const ctx=this.ctx;
+   if(this.viewport){const v=this.viewport,w=Math.round(v.width*v.dpr),h=Math.round(v.height*v.dpr);if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;}ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,w,h);if(!this.transparent){ctx.fillStyle=this.background;ctx.fillRect(0,0,w,h);}ctx.setTransform(v.matrix[0]*v.dpr,0,0,v.matrix[3]*v.dpr,v.matrix[4]*v.dpr,v.matrix[5]*v.dpr);}
+   else{ctx.setTransform(this.scale,0,0,this.scale,0,0);ctx.clearRect(0,0,600,760);if(!this.transparent){ctx.fillStyle=this.background;ctx.fillRect(0,0,600,760);}}
+   ctx.lineCap='round';ctx.lineJoin='round';
    // A few understated graphite strokes ground the feet in the same paper.
    ctx.strokeStyle='#d4d0c4';ctx.lineWidth=.4;ctx.globalAlpha=.4;
    for(let i=0;i<(scene.stage===0||this.ground===false?0:22);i++){const x=176+i*10,y=668+Math.sin(i*4.3)*3;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+10+Math.sin(i*2.2)*7,y+.2);ctx.stroke();}ctx.globalAlpha=1;
@@ -288,7 +291,7 @@ export class CreatureView{
     }
     if(now-last>=33){const current=this.familyAction,t=current?Math.min(1,(now-current.start)/current.duration):0;
      this.scene=familyPose(this.target,current?.action??'breathe',t,(now-this.familyEpoch)/1000,current?.direction??1);this.renderer.draw(this.posePresenter?.(this.scene,now)??this.scene);this.renderer.canvas.dataset.familyAction=current?.action??'breathe';last=now;
-     if(current&&t>=1){this.familyAction=null;this.familyDue=now+p.pause;this.event++;}
+     if(current&&t>=1){this.familyAction=null;this.familyDue=now+(this.behaviorPause?.(this.target,this.event)??p.pause);this.event++;}
     }
     this.raf=requestAnimationFrame(frame);
    };this.raf=requestAnimationFrame(frame);
