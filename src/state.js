@@ -1,5 +1,6 @@
 import {QUESTIONS,normalizeAnswers,encodeDNA} from './dna.js';
 import {generateStory,wordCount} from './story.js';
+import {materialQuestion,materialPrinciple} from './material-flow.js';
 export const initialState=()=>({screen:'intro',rulesVersion:7,step:0,answers:{},name:'',storySeed:0,visualSeed:null,story:null,creationId:null,createdAt:null});
 export const normalizeName=value=>Array.from(String(value??'').replace(/[\u0000-\u001f\u007f]/g,'').replace(/\s+/gu,' ').trim()).slice(0,48).join('');
 const complete=s=>QUESTIONS.every(q=>s.answers[q.key]);
@@ -21,7 +22,15 @@ export function reducer(state,event){
   }
   case 'NAME':{const name=normalizeName(event.name);return name||state.screen==='intro'?{...state,name}:state;}
   case 'HOME':return{...state,screen:'intro'};
-  case 'SELECT':{const q=QUESTIONS[state.step];if(state.screen!=='question'||!q.options.some(o=>o[0]===event.value))return state;if(state.answers[q.key]===event.value)return state;return{...state,answers:{...state.answers,[q.key]:event.value},story:null};}
+  case 'SELECT':{
+   if(state.screen!=='question')return state;
+   if(state.step===0){const m=materialQuestion(state.answers);if(m.options.some(o=>o[0]===event.value)){
+    const answers={...state.answers,[m.key]:event.value},principle=materialPrinciple(answers.construction,answers.surface);
+    if(principle)answers.principle=principle;
+    return {...state,answers,story:null};
+   }}
+   const q=QUESTIONS[state.step];if(!q.options.some(o=>o[0]===event.value))return state;if(state.answers[q.key]===event.value)return state;return{...state,answers:{...state.answers,[q.key]:event.value},story:null};
+  }
   case 'ADVANCE':{if(!state.answers[QUESTIONS[state.step].key])return state;if(state.step===4)return withStory({...state,screen:'reveal'});return{...state,step:state.step+1};}
   case 'REVEAL':return complete(state)&&state.name?withStory({...state,screen:'reveal'}):state;
   case 'BACK':return state.screen==='reveal'?{...state,screen:'question',step:4}:state.step>0?{...state,step:state.step-1}:{...state,screen:'intro'};
@@ -37,8 +46,9 @@ export function reducer(state,event){
 export function restoreState(raw){
  try{
   const s=JSON.parse(raw);if(!s||!['intro','question','reveal'].includes(s.screen)||!Number.isInteger(s.step)||s.step<0||s.step>4)throw new Error();
-  normalizeAnswers(s.answers);const answers={};for(const q of QUESTIONS)if(s.answers[q.key])answers[q.key]=s.answers[q.key];
-  if(s.screen==='reveal'&&Object.keys(answers).length!==5)throw new Error();
+  normalizeAnswers(s.answers);const answers={};for(const q of [...QUESTIONS,{key:'construction'},{key:'surface'}])if(s.answers[q.key])answers[q.key]=s.answers[q.key];
+  if(answers.surface&&materialPrinciple(answers.construction,answers.surface)!==answers.principle)throw new Error();
+  if(s.screen==='reveal'&&!QUESTIONS.every(q=>answers[q.key]))throw new Error();
   if(s.screen==='question'&&QUESTIONS.slice(0,s.step).some(q=>!answers[q.key]))throw new Error();
   const name=normalizeName(s.name),seed=Number.isInteger(s.storySeed)?s.storySeed>>>0:0;
   const rulesVersion=!Object.keys(answers).length?7:[3,4,5,6,7].includes(s.rulesVersion)?s.rulesVersion:2;

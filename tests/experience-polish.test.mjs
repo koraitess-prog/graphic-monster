@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {generateMonster,combinations} from '../src/dna.js';import {describeCreature} from '../src/creature-description.js';
-import {centeredFormationCamera,flightViewport} from '../src/arrival-camera.js';import {textPlayMotion,creaturePlayFrame} from '../src/creature-play.js';import {incomingPaperPose} from '../src/paper-vortex.js';
+import {centeredFormationCamera,flightViewport} from '../src/arrival-camera.js';import {textPlayMotion,creaturePlayFrame,creaturePlayPose,letterFlight,posedMouthTarget,nameFeeding,creatureTextCamera,containedPaperRect} from '../src/creature-play.js';import {incomingPaperPose} from '../src/paper-vortex.js';
 const scene=generateMonster({principle:'grid',organization:'experiment',gaze:'expression',density:'rich',attitude:'playful',seed:17},7);
 test('centered assembly shares the exact first flight frame and ends at the landing layout',()=>{
  for(const[width,height]of [[390,844],[1280,850]]){const origin=centeredFormationCamera(scene,width,height),landing={scale:.5,x:20,y:60},points=scene.shapes.flatMap(p=>p.points),xs=points.map(p=>p[0]),ys=points.map(p=>p[1]);
@@ -18,5 +18,20 @@ test('text and name return exactly; character approaches text before swatting an
  for(const at of [1800,5800,7400,9400,12000,14000]){const a=creaturePlayFrame(scene,at-1,layout).camera,b=creaturePlayFrame(scene,at+1,layout).camera;assert.ok(Math.abs(a.x-b.x)<1&&Math.abs(a.y-b.y)<1&&Math.abs(a.scale-b.scale)<.01);}
 });
 test('all descriptions are short, factual, answer-specific and leave archived writing alone',()=>{
- for(const a of combinations()){const s=generateMonster({...a,seed:17},7),before=JSON.stringify(s),text=describeCreature(s);assert.ok(text.split(/\s+/).length<=28);assert.equal(text.split('.').filter(Boolean).length,3);assert.ok(text.includes(a.gaze==='clarity'?'one focused eye':s.eyes.length+' eyes'));assert.ok(text.includes(a.organization==='experiment'?'asymmetric':'ordered'));assert.equal(JSON.stringify(s),before);}
+ for(const a of combinations()){const s=generateMonster({...a,seed:17},7),before=JSON.stringify(s),text=describeCreature(s);assert.ok(text.split(/\s+/).length<=40);assert.equal(text.split('.').filter(Boolean).length,3);assert.ok(text.includes(a.gaze==='clarity'?'A clear focal point':'Multiple focal points'));assert.ok(text.includes(a.density==='rich'?'layered textures':'negative space'));assert.ok(text.includes(a.attitude==='playful'?'playful rhythm':'rhythm precise'));assert.ok(!/legs|eyes|hungry|ancient/.test(text));assert.ok(text.includes(a.organization==='experiment'?'asymmetric':'ordered'));assert.equal(JSON.stringify(s),before);}
+});
+test('letters scatter independently while the creature brings its mouth to the stationary full-size name',()=>{
+ assert.notDeepEqual(letterFlight(7400,0),letterFlight(7400,1));
+ for(let i=0;i<100;i++){const m=letterFlight(9400,i,390);assert.ok(Math.abs(m.x)<1e-10&&Math.abs(m.y)<1e-10);}
+ const rect={left:220,top:360,width:140,height:40},layout={width:390,height:844,home:{scale:.5,x:0,y:30},text:{description:rect,name:rect}},ms=9550+2300*.58;
+ const frame=creaturePlayFrame(scene,ms,layout),pose=creaturePlayPose(scene,frame,ms/1000),camera=creatureTextCamera(pose,frame,layout.text,ms),mouth=posedMouthTarget(pose,camera),feed=nameFeeding(ms,rect,mouth);
+ assert.ok(mouth);assert.ok(Math.abs(rect.left+rect.width*.94-mouth.x)<.001);assert.ok(Math.abs(rect.top+rect.height*.52-mouth.y)<.001);
+ for(let at=9400;at<=12000;at+=25){const motion=nameFeeding(at,rect,mouth);assert.deepEqual(motion,{x:0,y:0,scale:1,opacity:1});}
+ assert.deepEqual(nameFeeding(13000,rect,mouth),{x:0,y:0,scale:1,opacity:1});
+});
+
+test('mouth docking uses the visible contained name, including desktop left alignment',()=>{
+ const rect={left:800,top:300,width:220,height:48};
+ assert.deepEqual(containedPaperRect(rect,300,138,'0% 50%'),{left:800,top:300,width:300*48/138,height:48});
+ const centered=containedPaperRect(rect,300,138,'50% 50%');assert.ok(centered.left>800);assert.equal(centered.width,300*48/138);
 });

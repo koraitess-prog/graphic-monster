@@ -56,7 +56,7 @@ export class PaperFormation{
   const key=JSON.stringify(answers);if(this.active&&key===this.answerKey)return;this.answerKey=key;
   const now=performance.now();this.previous=new Map(this.visibleParts().map((p,i)=>[p.id,this.placement(p,i,now)]));this.changed=now;
   this.scene=scene;this.answers={...answers};
-  for(const [key,value] of Object.entries(answers))if(['principle','organization','gaze','density','attitude'].includes(key)&&this.retained.get(key)?.value!==value){const image=this.factory(600,360);paintQuestionPaper(image,value);this.retained.set(key,{value,image,w:200,h:120,at:now});}
+  for(const [key,value] of Object.entries(answers))if(['construction','surface','principle','organization','gaze','density','attitude'].includes(key)&&!(key==='principle'&&answers.construction)&&this.retained.get(key)?.value!==value){const image=this.factory(600,360);paintQuestionPaper(image,value);this.retained.set(key,{value,image,w:200,h:120,at:now});}
   for(const key of this.retained.keys())if(!answers[key]&&!key.startsWith('route:'))this.retained.delete(key);
   if(!Object.keys(answers).length&&!this.active)this.retained.clear();
   const baked=this.bake(scene);this.parts=baked.parts;this.eyes=baked.eyes;this.lines=baked.lines;

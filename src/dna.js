@@ -16,7 +16,8 @@ export const QUESTIONS = [
 ];
 export const DEFAULTS={principle:'shape',organization:'order',gaze:'clarity',density:'minimal',attitude:'precise'};
 export function normalizeAnswers(answers={}){
- const result={};for(const q of QUESTIONS){const value=answers[q.key]??DEFAULTS[q.key];if(!q.options.some(o=>o[0]===value))throw new Error(`Invalid ${q.key}`);result[q.key]=value;}return result;
+ const result={};for(const q of QUESTIONS){const value=answers[q.key]??DEFAULTS[q.key];if(!q.options.some(o=>o[0]===value))throw new Error(`Invalid ${q.key}`);result[q.key]=value;}
+ for(const [key,values]of [['construction',['form-type','form-grid','form-shape']],['surface',['pigment','grain']]])if(answers[key]!==undefined){if(!values.includes(answers[key]))throw new Error(`Invalid ${key}`);result[key]=answers[key];}return result;
 }
 export function encodeDNA(answers){const a=normalizeAnswers(answers);return QUESTIONS.map(q=>q.options.findIndex(o=>o[0]===a[q.key])).join('');}
 export function decodeDNA(code){if(!/^[0-4][01]{4}$/.test(code))throw new Error('Invalid DNA code');return Object.fromEntries(QUESTIONS.map((q,i)=>[q.key,q.options[Number(code[i])][0]]));}

@@ -1,7 +1,7 @@
 // Pure, family-aware stage direction. The camera moves the original printed art;
 // saved coordinates, rig lengths and DNA stay untouched.
 import {familyPose,familyCapabilities,familyProfile,supportsFamilyMotion} from './family-motion.js';
-import {mouthFor} from './monster-mouths.js';
+import {mouthFor,withMonsterMouth} from './monster-mouths.js';
 const clamp=t=>Math.max(0,Math.min(1,t)),ease=t=>{t=clamp(t);return t*t*(3-2*t);},mix=(a,b,t)=>a+(b-a)*t;
 const box=scene=>{const pts=scene.shapes.filter(p=>!p.carrier&&!p.opening).flatMap(p=>p.points),xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);return {left:Math.min(...xs),right:Math.max(...xs),top:Math.min(...ys),bottom:Math.max(...ys)};};
 const center=scene=>{const p=scene.shapes.find(p=>p.id==='body')?.points??[[300,380]];return p.reduce((c,q)=>[c[0]+q[0]/p.length,c[1]+q[1]/p.length],[0,0]);};
@@ -51,7 +51,13 @@ export function creaturePlayFrame(scene,ms,{width,height,home,text}){
 export function creaturePlayPose(scene,frame,seconds){
  if(frame.complete)return scene;
  if(frame.action==='swat')return familyPose(scene,'greet',frame.t*.8,seconds,frame.direction);
- if(frame.action==='bite')return familyPose(scene,familyCapabilities(scene).includes('chatter')?'chatter':'greet',frame.t,seconds,frame.direction);
+ if(frame.action==='bite'){
+  const pose=familyPose(scene,familyCapabilities(scene).includes('chatter')?'chatter':'greet',frame.t,seconds,frame.direction);
+  // Two tentative nibbles on the unchanged paper edge, then let it go.
+  const t=clamp((frame.t*2600-150)/2300),envelope=ease(t/.25)*(1-ease((t-.72)/.28)),nibble=t>=.38&&t<=.72?.55+.45*Math.cos((t-.38)*Math.PI*2/.17):1;
+  if(pose.faceFrame)return {...pose,faceFrame:{...pose.faceFrame,cue:{...pose.faceFrame.cue,open:envelope*nibble}}};
+  return pose;
+ }
  if(frame.action==='climb'){
   // Reuse the fixed-length family solver with staggered gripping arms and feet.
   const grip=i=>(1+Math.sin(frame.cycle*3.8+i*Math.PI))*.5;
@@ -64,26 +70,67 @@ export function textPlayMotion(ms){
  const flight=Math.sin(f*Math.PI),bite=Math.sin(b*Math.PI);
  return {textX:flight*120,textY:-flight*76,rotation:flight*11,nameX:-bite*9,nameRotation:-bite*4,bite:bite*.22};
 }
+export function letterFlight(ms,index,width=1280){
+ const t=clamp((ms-6400-(index%7)*23)/2650),arc=Math.sin(t*Math.PI),spread=width<680?.48:1;
+ return {x:arc*(48+(index*47)%139)*spread,y:-arc*(28+(index*31)%102),rotation:arc*((index*29)%91-45)};
+}
+export function posedMouthTarget(pose,camera){
+ const mouth=withMonsterMouth(pose).shapes.find(p=>p.id==='expression-mouth-void');if(!mouth)return null;
+ const xs=mouth.points.map(p=>p[0]),ys=mouth.points.map(p=>p[1]);
+ return {x:(Math.min(...xs)+Math.max(...xs))/2*camera.scale+camera.x,y:(Math.min(...ys)+Math.max(...ys))/2*camera.scale+camera.y,width:(Math.max(...xs)-Math.min(...xs))*camera.scale};
+}
+export function nameFeeding(){
+ // The lettering is a fixed object in the scene, never attracted to the face.
+ return {x:0,y:0,scale:1,opacity:1};
+}
+export function containedPaperRect(rect,width,height,position='50% 50%'){
+ const scale=Math.min(rect.width/width,rect.height/height),w=width*scale,h=height*scale;
+ const [horizontal='50%',vertical='50%']=position.split(' '),fraction=value=>value==='left'||value==='top'?0:value==='right'||value==='bottom'?1:value==='center'?.5:parseFloat(value)/100;
+ return {left:rect.left+(rect.width-w)*fraction(horizontal),top:rect.top+(rect.height-h)*fraction(vertical),width:w,height:h};
+}
+export function creatureTextCamera(pose,frame,text,ms,camera=frame.camera){
+ if(!text?.name)return camera;
+ const reach=ms<9400?ease((ms-7400)/2000):ms<12000?1:1-ease((ms-12000)/2000);
+ if(!reach)return camera;
+ const mouth=posedMouthTarget(pose,camera);if(!mouth)return camera;
+ // Dock the animated jaw, not its rest-pose estimate, at the stationary name.
+ const x=text.name.left+text.name.width*.94,y=text.name.top+text.name.height*.52;
+ return {...camera,x:camera.x+(x-mouth.x)*reach,y:camera.y+(y-mouth.y)*reach};
+}
+function flyingLetters(element){
+ const layer=document.createElement('div');layer.className='flying-description';layer.setAttribute('aria-hidden','true');
+ const style=getComputedStyle(element);Object.assign(layer.style,{position:'fixed',inset:'0',pointerEvents:'none',zIndex:'14',font:style.font,color:style.color,letterSpacing:style.letterSpacing});
+ const letters=[],walker=document.createTreeWalker(element,NodeFilter.SHOW_TEXT);let node;
+ while((node=walker.nextNode())){let offset=0;for(const char of Array.from(node.textContent)){
+  const end=offset+char.length;if(char.trim()){const range=document.createRange();range.setStart(node,offset);range.setEnd(node,end);const r=range.getBoundingClientRect(),span=document.createElement('span');span.textContent=char;Object.assign(span.style,{position:'absolute',left:r.left+'px',top:r.top+'px',lineHeight:r.height+'px',whiteSpace:'pre',transformOrigin:'center'});layer.append(span);letters.push(span);}offset=end;
+ }}
+ document.body.append(layer);return {letters,remove:()=>layer.remove()};
+}
 export function mountCreaturePlay(field,view){
  const events=new AbortController();
  const canvas=view.renderer.canvas,oldStyle=canvas.getAttribute('style'),oldTransparent=view.renderer.transparent,oldGround=view.renderer.ground,oldViewport=view.renderer.viewport;
  const root=field.closest?.('.screen-reveal'),description=root?.querySelector('.specimen-description'),name=root?.querySelector('.reveal-name'),textStyles=[description,name].filter(Boolean).map(element=>({element,style:element.getAttribute('style')}));
  const restoreText=()=>{for(const{element,style}of textStyles)if(style===null)element.removeAttribute('style');else element.setAttribute('style',style);};
- let text=null;
+ let text=null,letterLayer=null;
+ const clearLetters=()=>{letterLayer?.remove();letterLayer=null;if(description)description.style.opacity='';};
  let home=null,start=null,suspended=null,done=false,restored=true;
- const restore=()=>{restoreText();if(restored)return;restored=true;if(oldStyle===null)canvas.removeAttribute('style');else canvas.setAttribute('style',oldStyle);view.renderer.transparent=oldTransparent;view.renderer.ground=oldGround;view.renderer.viewport=oldViewport;view.renderer.resize(view.renderer.scale);document.body.classList.remove('creature-playing','creature-closeup');delete canvas.dataset.playPhase;};
+ const restore=()=>{clearLetters();restoreText();if(restored)return;restored=true;if(oldStyle===null)canvas.removeAttribute('style');else canvas.setAttribute('style',oldStyle);view.renderer.transparent=oldTransparent;view.renderer.ground=oldGround;view.renderer.viewport=oldViewport;view.renderer.resize(view.renderer.scale);document.body.classList.remove('creature-playing','creature-closeup');delete canvas.dataset.playPhase;};
  const suspend=now=>{if(start!==null&&suspended===null)suspended=now;const wasActive=!restored;restore();if(wasActive)view.renderer.draw?.(view.target);};
  window.addEventListener('resize',()=>{done=true;restore();},{signal:events.signal});
  return {
   frame(scene,now,ready){
    if(done||!supportsFamilyMotion(view.target)||!ready){if(!ready)suspend(now);return scene;}
-   if(start===null){const r=canvas.getBoundingClientRect(),scale=Math.min(r.width/600,r.height/760);home={scale,x:r.left+(r.width-600*scale)/2,y:r.top+(r.height-760*scale)/2};if(description&&name)text={description:description.getBoundingClientRect(),name:name.getBoundingClientRect()};start=now;}
+   if(start===null){const r=canvas.getBoundingClientRect(),scale=Math.min(r.width/600,r.height/760);home={scale,x:r.left+(r.width-600*scale)/2,y:r.top+(r.height-760*scale)/2};if(description&&name){const paper=name.querySelector('canvas'),rect=(paper??name).getBoundingClientRect();text={description:description.getBoundingClientRect(),name:paper?containedPaperRect(rect,paper.width,paper.height,getComputedStyle(paper).objectPosition):rect};}start=now;}
    if(suspended!==null){start+=now-suspended;suspended=null;}
    const frame=creaturePlayFrame(view.target,now-start,{width:innerWidth,height:innerHeight,home,text});
-   if(text){const m=textPlayMotion(now-start),dx=m.textX*(innerWidth<680?.38:1);description.style.transform=`translate(${dx}px,${m.textY}px) rotate(${m.rotation}deg)`;name.style.transform=`translate(${m.nameX}px,0) rotate(${m.nameRotation}deg)`;name.style.clipPath=m.bite?`polygon(0 0,100% 0,100% 28%,${100-m.bite*100}% 43%,100% 52%,${100-m.bite*75}% 67%,100% 76%,100% 100%,0 100%)`:'none';}
    if(frame.complete){done=true;view.familyAction=null;view.familyRequested=null;view.familyDue=now+1800;restore();return view.target;}
-   const pose=creaturePlayPose(view.target,frame,now/1000),c={...frame.camera};
+   const pose=creaturePlayPose(view.target,frame,now/1000);let c={...frame.camera};
    if(['walk','run','glide'].includes(frame.action)){const a=center(view.target),b=center(pose);c.x-=(b[0]-a[0])*c.scale;c.y-=(b[1]-a[1])*c.scale;}
+   if(text){
+    const elapsed=now-start;
+    if(elapsed>=6400&&elapsed<9300){letterLayer??=flyingLetters(description);description.style.opacity='0';letterLayer.letters.forEach((letter,i)=>{const m=letterFlight(elapsed,i,innerWidth);letter.style.transform=`translate(${m.x}px,${m.y}px) rotate(${m.rotation}deg)`;});}else clearLetters();
+    c=creatureTextCamera(pose,frame,text,elapsed,c);
+   }
    restored=false;view.renderer.transparent=true;view.renderer.ground=false;
    view.renderer.viewport={width:innerWidth,height:innerHeight,dpr:Math.min(1.5,globalThis.devicePixelRatio??1),matrix:[c.scale,0,0,c.scale,c.x,c.y]};
    Object.assign(canvas.style,{position:'fixed',inset:'auto',left:'0px',top:'0px',width:`${innerWidth}px`,height:`${innerHeight}px`,maxWidth:'none',transformOrigin:'0 0',zIndex:'8',transform:'none'});

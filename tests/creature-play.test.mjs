@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {creaturePlayFrame,creaturePlayPose,PLAY_END,faceBox} from '../src/creature-play.js';
+import {creaturePlayFrame,creaturePlayPose,PLAY_END,faceBox,creatureTextCamera,posedMouthTarget} from '../src/creature-play.js';
 import {generateMonster} from '../src/dna.js';import {ANATOMIES} from '../src/paper-dna.js';
 import {currentCollection} from '../src/shared-archive.js';
 const sample=anatomy=>generateMonster({anatomy,principle:'color',organization:'experiment',gaze:'expression',density:'rich',attitude:'playful',seed:411},6);
@@ -29,4 +29,10 @@ test('play can pause, complete and release its viewport camera and event listene
   binding.destroy();assert.equal(binding.frame(scene,100000,true),scene);assert.equal(classes.size,0);
   const second=mountCreaturePlay({},view);second.frame(scene,1,true);second.frame(scene,31001,true);assert.equal(renderer.viewport,undefined);assert.equal(renderer.ground,true);second.destroy();assert.equal(classes.size,0);
  }finally{for(const k of keys)if(old[k]===undefined)delete globalThis[k];else globalThis[k]=old[k];}
+});
+
+test('each family reaches the stationary name with its posed jaw on desktop and phone',()=>{
+ for(const anatomy of ANATOMIES)for(const width of [390,1280]){const scene=sample(anatomy),name={left:width*.65,top:300,width:120,height:40},text={name,description:{...name,top:360}},layout={width,height:844,home:{scale:.5,x:20,y:70},text};
+  for(const ms of [9400,10200,10900,11999]){const frame=creaturePlayFrame(scene,ms,layout),pose=creaturePlayPose(scene,frame,ms/1000),camera=creatureTextCamera(pose,frame,text,ms),mouth=posedMouthTarget(pose,camera);assert.ok(mouth,anatomy);assert.ok(Math.abs(mouth.x-name.left-name.width*.94)<.001);assert.ok(Math.abs(mouth.y-name.top-name.height*.52)<.001);}
+ }
 });

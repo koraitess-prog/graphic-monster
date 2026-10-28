@@ -5,6 +5,12 @@ export function answerDNAScene(input={}){
  const answers=normalizeAnswers(input),anatomy=anatomyFromAnswers(answers),source=paperDNAScene({...input,...answers,anatomy,...(anatomy==='accordion'?{eyeVariant:answers.gaze==='clarity'?'central':'side'}:{})}),design=fitDesignParameters(source,designParameters(answers)),move=p=>mapDesignPoint(p,design);
  const part=p=>({...p,points:p.points.map(move),...(p.anchor?{anchor:move(p.anchor)}:{})});
  const shapes=source.shapes.map(part),body=shapes.find(s=>s.id==='body').points;
+ // Surface is independent of the construction choice. Old snapshots have no
+ // surface answer and retain their original print treatment.
+ if(answers.surface)for(const [i,p]of shapes.entries())if(p.paperPiece){
+  p.paperPattern=answers.surface==='grain'?['marks','stripes-diagonal','newsprint'][i%3]:null;
+  p.texture=answers.surface==='grain'?.62:.26;
+ }
  // Dense material becomes actual silhouette: a small attached fan of cut fins.
  if(answers.density==='rich'){
   const edge=body.reduce((best,p)=>p[0]>best[0]?p:best,body[0]),color=source.shapes.find(p=>p.carrier&&!p.opening&&p.color!=='#151a1b')?.color??'#519f7d';

@@ -1,7 +1,10 @@
-// Short factual display copy. Stored stories remain untouched backups.
+// Design interpretation for display; archived scenes and stored stories stay intact.
 export function describeCreature(scene){
- const a=scene.answers??{},legs=scene.shapes.filter(p=>/^(?:extra-)?leg-[^~]+$/.test(p.id)).length,eyes=scene.eyes.length;
- const words=['No','One','Two','Three','Four','Five','Six'];
- const material={typography:'Letter-shaped cuts',grid:'Woven paper',color:'Overlapping color fields',shape:'Open, angular cuts',texture:'Patterned paper'}[a.principle]??'Cut paper';
- return `${words[legs]??legs} legs and ${eyes===1?'one focused eye':eyes+' eyes'}. ${material} with ${a.organization==='experiment'?'asymmetric':'ordered'} proportions. ${a.density==='rich'?'Layered marks':'Sparse marks'} and ${a.attitude==='playful'?'restless':'deliberate'} movements.`;
+ const a=scene.answers??{};
+ const language={'form-type':'Letterforms','form-grid':'Modular structure','form-shape':'Free contours'}[a.construction]??{typography:'Typography',grid:'Modular repetition',color:'Contrasting color fields',shape:'Angular forms and open counters',texture:'Repeated surface marks'}[a.principle]??'Cut-paper forms';
+ const composition=a.organization==='experiment'?'An asymmetric composition':'An ordered composition';
+ const focus=a.gaze==='clarity'?'A clear focal point':'Multiple focal points';
+ const surface=a.surface?`${a.density==='rich'?'layered':'sparse'} ${a.surface==='grain'?'printed textures':'color fields'}`:a.density==='rich'?'layered textures':'generous negative space';
+ const gesture=a.attitude==='playful'?'Loose, irregular gestures create a playful rhythm.':'Controlled gestures keep the rhythm precise.';
+ return `${composition} emphasizes ${language.toLowerCase()}. ${focus} and ${surface} shape the visual hierarchy. ${gesture}`;
 }

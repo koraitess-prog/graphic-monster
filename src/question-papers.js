@@ -7,6 +7,8 @@ const cache=new Map(),cream='#e8ddba',ochre='#d6a333',ink='#151a1b',pink='#ce658
 const factory=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;};
 const contextStocks=new WeakMap();
 export function drawQuestionObject(g,value,makeCanvas=factory,phase=0){
+ const material={'form-type':'typography','form-grid':'grid','form-shape':'shape',pigment:'color',grain:'texture'}[value];
+ if(material){drawQuestionObject(g,material,makeCanvas,phase);return;}
  const routes={'route-built':['typography','grid'],'route-sensory':['color','texture'],'route-marks':['shape','texture']};
  if(routes[value]){routes[value].forEach((v,i)=>{g.save();g.translate(i?72:0,i?34:0);g.scale(.67,.67);drawQuestionObject(g,v,makeCanvas,phase);g.restore();});return;}
  const seed=[...value].reduce((n,c)=>n*31+c.charCodeAt(0),7)>>>0,random=rng(seed);let piece=0;

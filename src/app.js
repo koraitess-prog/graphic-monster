@@ -18,28 +18,27 @@ import {mountObservation,rememberVisitor} from './observation.js';
 import {playRevealFlight} from './reveal-flight.js?v=arrival2';
 import {createRevealPapers} from './reveal-papers.js?v=arrival2';
 import {familyProfile} from './family-motion.js';
-import {materialQuestion,nextMaterialRoute,restoreMaterialRoute} from './material-flow.js';
+import {materialQuestion,MATERIAL_QUESTIONS,materialPrinciple,materialHashSuffix} from './material-flow.js';
 import {describeCreature} from './creature-description.js';
 
 const app=document.querySelector('#app'),copy=document.querySelector('#copy'),canvas=document.querySelector('#monster');
 const announcement=document.querySelector('#announcement'),dialog=document.querySelector('#name-dialog');
 const headerName=document.querySelector('#header-name'),caption=document.querySelector('#creature-caption');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)'),storageKey='graphic-monster:experience:v2';
-const feedback=['Sample 01 retained.','Sample 02 retained.','Sample 03 retained.','Sample 04 retained.','Sample 05 retained.'];
 const freshSeed=()=>crypto.getRandomValues(new Uint32Array(1))[0];
 const escape=text=>String(text??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const labelFor=(q,value)=>q.options.find(o=>o[0]===value)?.[1];
 let state=initialState(),advanceTimer,renameFocus,transitioning=false,answerLocked=false,revealPlaying=false,revealController=null,observation=null;
-let materialRoute=[],choiceMotionCleanup;
-try{materialRoute=restoreMaterialRoute(sessionStorage.getItem('graphic-monster:material-route'));}catch{}
-const currentQuestion=()=>state.step===0?materialQuestion(materialRoute):QUESTIONS[state.step];
+let choiceMotionCleanup;
+const flowQuestions=()=>state.answers.principle&&!state.answers.construction?QUESTIONS:[...MATERIAL_QUESTIONS,...QUESTIONS.slice(1)];
+const currentQuestion=()=>state.step===0?materialQuestion(state.answers):QUESTIONS[state.step];
 let archiveDB,records=[],archiveFailure='',archiveQueue=Promise.resolve();
 const sharedArchive=new SharedArchive(archiveConfig);let sharedRecords=[],refreshingArchive=false;
 const afterlife=document.querySelector('#afterlife');
 document.addEventListener('pointermove',e=>rememberVisitor(e.clientX/Math.max(1,innerWidth),e.clientY/Math.max(1,innerHeight)),{passive:true});
 const collection=new CollectionScreen(document.querySelector('#collection-screen'),{back:()=>returnToExperience(),create:()=>{returnToExperience();dispatch({type:'RESET'},{art:true});},open:id=>{location.hash=id?'creature='+encodeURIComponent(id):'archive';}});
 try{state=restoreState(sessionStorage.getItem(storageKey)??sessionStorage.getItem('design-monsters:experience:v1'));}catch{}
-function applyHash(){if(state.screen==='reveal')return false;const match=location.hash.match(/^#dna=([0-4][01]{4})$/);if(!match)return false;const answers=decodeDNA(match[1]);const changed=encodeDNA(state.answers)!==match[1];state={...state,answers,step:4,story:changed?null:state.story};state=state.name?reducer(state,{type:'REVEAL'}):{...state,screen:'intro'};return true;}
+function applyHash(){if(state.screen==='reveal')return false;const match=location.hash.match(/^#dna=([0-4][01]{4})(?:&form=(form-type|form-grid|form-shape)&surface=(pigment|grain))?$/);if(!match)return false;const answers=decodeDNA(match[1]);if(match[2]&&materialPrinciple(match[2],match[3])===answers.principle){answers.construction=match[2];answers.surface=match[3];}const changed=encodeDNA(state.answers)!==match[1];state={...state,answers,step:4,story:changed?null:state.story};state=state.name?reducer(state,{type:'REVEAL'}):{...state,screen:'intro'};return true;}
 applyHash();
 try{archiveDB=await openArchive();records=await archiveDB.list();}catch{archiveFailure='The collection cannot be saved in this browser right now.';}
 // Only unfinished, unarchived v6 drafts adopt answer-driven anatomy. Completed
@@ -57,12 +56,12 @@ const stageVisibility=new IntersectionObserver(entries=>{if(transitioning||obser
 function save(){
  try{sessionStorage.setItem(storageKey,JSON.stringify(state));}catch{}
  if(parseCollectionRoute(location.hash))return;
- if(state.screen==='reveal')history.replaceState(null,'',`#dna=${encodeDNA(state.answers)}`);
+ if(state.screen==='reveal')history.replaceState(null,'',`#dna=${encodeDNA(state.answers)}${materialHashSuffix(state.answers)}`);
  else if(location.hash.startsWith('#dna='))history.replaceState(null,'',location.pathname+location.search);
 }
 function announce(text){announcement.textContent=text;}
-function progress(){return `<div class="dimension-nav" role="progressbar" aria-label="Design decisions" aria-valuemin="0" aria-valuemax="5" aria-valuenow="${QUESTIONS.filter(q=>state.answers[q.key]).length}">${QUESTIONS.map((q,i)=>`<span class="dimension${state.step===i?' current':''}${state.answers[q.key]?' complete':''}" aria-hidden="true"><span class="progress-mark"></span></span>`).join('')}</div>`;}
-function answer(option,index){const[value,label]=option,selected=state.answers[QUESTIONS[state.step].key]===value;return `<button type="button" class="choice${selected?' selected':''}" data-value="${value}" aria-pressed="${selected}" aria-label="${label}"><span class="choice-art"><canvas data-paper-choice="${value}" aria-hidden="true"></canvas></span><span class="choice-label">${label}</span><span class="choice-number" aria-hidden="true">0${index+1}</span><span class="choice-check" aria-hidden="true">✓</span></button>`;}
+function progress(){return `<div class="dimension-nav" role="progressbar" aria-label="Design decisions" aria-valuemin="0" aria-valuemax="${flowQuestions().length}" aria-valuenow="${flowQuestions().filter(q=>state.answers[q.key]).length}">${flowQuestions().map((q,i)=>`<span class="dimension${currentQuestion().key===q.key?' current':''}${state.answers[q.key]?' complete':''}" aria-hidden="true"><span class="progress-mark"></span></span>`).join('')}</div>`;}
+function answer(option,index){const[value,label]=option,selected=state.answers[currentQuestion().key]===value;return `<button type="button" class="choice${selected?' selected':''}" data-value="${value}" aria-pressed="${selected}" aria-label="${label}"><span class="choice-art"><canvas data-paper-choice="${value}" aria-hidden="true"></canvas></span><span class="choice-label">${label}</span><span class="choice-number" aria-hidden="true">0${index+1}</span><span class="choice-check" aria-hidden="true">✓</span></button>`;}
 function render({focus=false,selection=false}={}){
  observation?.destroy();observation=null;
  choiceMotionCleanup?.();choiceMotionCleanup=null;
@@ -82,15 +81,15 @@ function render({focus=false,selection=false}={}){
    canvas.setAttribute('aria-label','An amorphous living painting. No face or limbs yet.');
  }else if(state.screen==='question'){
    const q=currentQuestion();
-   copy.innerHTML=`<h1 class="sr-only" tabindex="-1">${q.title.replace('\n',' ')} Drag one paper object into the living cloud. Keyboard: choose an object and press Enter.</h1><div class="sr-only">${progress()}</div><div class="choices ${q.options.length===5?'five':'two'}" role="group" aria-label="Paper objects">${q.options.map(answer).join('')}</div>`;
+   copy.innerHTML=`<h1 class="sr-only" tabindex="-1">${q.title.replace('\n',' ')} Drag one paper object into the living cloud. Keyboard: choose an object and press Enter.</h1><div class="sr-only">${progress()}</div><div class="choices ${q.options.length===5?'five':q.options.length===3?'three':'two'}" role="group" aria-label="Paper objects">${q.options.map(answer).join('')}</div>`;
    choiceMotionCleanup=mountQuestionPapers(copy);
    document.querySelector('#stage-note').textContent='';
-   canvas.setAttribute('aria-label',`${state.name}, evolving through your design decisions. ${QUESTIONS.filter(q=>state.answers[q.key]).map(q=>labelFor(q,state.answers[q.key])).join(', ')}.`);
+   canvas.setAttribute('aria-label',`${state.name}, evolving through your design decisions. ${flowQuestions().filter(q=>state.answers[q.key]).map(q=>labelFor(q,state.answers[q.key])).join(', ')}.`);
  }else{
    state=reducer(state,{type:'REVEAL'});
    const story=describeCreature(previewScene());
    const nameSize=22;
-   copy.innerHTML=`<div class="observation-identity"><h1 class="reveal-name" style="--name-size:${nameSize}px" tabindex="-1" dir="auto">${escape(state.name)}</h1><p class="specimen-description" dir="auto">${escape(story)}</p><div class="specimen-actions"><button type="button" class="specimen-new" data-action="reset">Create new monster</button><button type="button" class="text-button specimen-play-toggle" aria-pressed="false">Pause play</button></div></div>`;
+   copy.innerHTML=`<div class="observation-identity"><h1 class="reveal-name" style="--name-size:${nameSize}px" tabindex="-1" dir="auto">${escape(state.name)}</h1><p class="specimen-description" dir="auto">${escape(story)}</p><div class="specimen-actions"><button type="button" class="specimen-new" data-action="reset">Create new monster</button></div></div>`;
    fitRevealName();
    document.querySelector('#full-story').replaceChildren();
    void syncArchive(structuredClone(state));
@@ -102,17 +101,17 @@ function render({focus=false,selection=false}={}){
  document.body.classList.toggle('monster-reveal',state.screen==='reveal'&&!parseCollectionRoute(location.hash));
  if(state.rulesVersion>=6)decoratePaperTitles(copy,{scene:state.screen==='reveal'?previewScene():undefined});
  const ledger=document.querySelector('#material-record');ledger.hidden=state.screen!=='question';
- ledger.innerHTML=QUESTIONS.map((q,i)=>`<span class="material-sample${state.answers[q.key]?' retained':''}" title="${escape(state.answers[q.key]?labelFor(q,state.answers[q.key]):'Pending material')}">${state.answers[q.key]?`<canvas data-retained="${state.answers[q.key]}" aria-hidden="true"></canvas>`:`<span aria-hidden="true">${i+1}</span>`}</span>`).join('');
- ledger.setAttribute('aria-label',`${QUESTIONS.filter(q=>state.answers[q.key]).length} of 5 material samples retained`);
+ ledger.innerHTML=flowQuestions().map((q,i)=>`<span class="material-sample${state.answers[q.key]?' retained':''}" title="${escape(state.answers[q.key]?labelFor(q,state.answers[q.key]):'Pending material')}">${state.answers[q.key]?`<canvas data-retained="${state.answers[q.key]}" aria-hidden="true"></canvas>`:`<span aria-hidden="true">${i+1}</span>`}</span>`).join('');
+ ledger.setAttribute('aria-label',`${flowQuestions().filter(q=>state.answers[q.key]).length} of ${flowQuestions().length} material samples retained`);
  for(const sample of ledger.querySelectorAll('canvas'))paintQuestionPaper(sample,sample.dataset.retained);
- document.querySelector('#material-step').textContent=state.screen==='question'?`MATERIAL / ${String(state.step+1).padStart(2,'0')}`:'';
- if(state.screen==='reveal'&&!revealPlaying)observation=mountObservation(app.querySelector('.studio'),view,{meet:true,play:true,pause:copy.querySelector('.specimen-play-toggle'),enabled:()=>!app.hidden&&!revealPlaying});
+ document.querySelector('#material-step').textContent=state.screen==='question'?`MATERIAL / ${String(flowQuestions().findIndex(q=>q.key===currentQuestion().key)+1).padStart(2,'0')}`:'';
+ if(state.screen==='reveal'&&!revealPlaying)observation=mountObservation(app.querySelector('.studio'),view,{meet:true,play:true,enabled:()=>!app.hidden&&!revealPlaying});
  window.dispatchEvent(new CustomEvent('graphic-monster:intro',{detail:state.screen==='intro'&&!parseCollectionRoute(location.hash)}));
  if(focus){
    copy.querySelector('h1')?.focus({preventScroll:true});
    if(state.screen==='question'&&matchMedia('(max-width:680px)').matches)window.scrollTo({top:0,behavior:'instant'});
  }
- if(selection)copy.querySelector(`[data-value="${state.answers[QUESTIONS[state.step].key]}"]`)?.focus({preventScroll:true});
+ if(selection)copy.querySelector(`[data-value="${state.answers[currentQuestion().key]}"]`)?.focus({preventScroll:true});
  save();
 }
 function fitRevealName(){
@@ -126,7 +125,7 @@ function fitRevealName(){
 window.addEventListener('resize',fitRevealName);
 reduced.addEventListener('change',()=>{if(reduced.matches)for(const animation of [...canvas.getAnimations(),...copy.getAnimations()]){try{animation.finish();}catch{}}});
 function returnToExperience(){
- history.pushState(null,'',location.pathname+location.search+(state.screen==='reveal'?`#dna=${encodeDNA(state.answers)}`:''));
+ history.pushState(null,'',location.pathname+location.search+(state.screen==='reveal'?`#dna=${encodeDNA(state.answers)}${materialHashSuffix(state.answers)}`:''));
  collection.close();app.hidden=false;render({focus:true});if(state.screen!=='question')view.setVisible(true);window.scrollTo({top:0,behavior:'instant'});
 }
 async function routeCollection(){
@@ -202,7 +201,6 @@ async function enterReveal(next,{focus=true}={}){
  }
 }
 function dispatch(event,{focus=true,art=false}={}){
- if(event.type==='RESET'){materialRoute=[];try{sessionStorage.removeItem('graphic-monster:material-route');}catch{}}
  clearTimeout(advanceTimer);answerLocked=false;const previous=state.screen,next=reducer(state,event);
  if(previous==='question'&&next.screen==='reveal'){enterReveal(next,{focus});return;}
  state=next;render({focus});if(previous!=='reveal'&&state.screen==='reveal')window.scrollTo({top:0,behavior:'instant'});if(art&&state.screen!=='question'){const scene=previewScene();view.update(scene,{immediate:state.screen==='intro'});warmPaint(scene);}
@@ -211,15 +209,9 @@ function choose(value,{transfer=true}={}){
  if(transitioning||answerLocked)return;
  if(transfer)formation.stir({energy:.3,spin:1});
  const options=currentQuestion().options;if(!options.some(o=>o[0]===value))return;
- const route=state.step===0?nextMaterialRoute(materialRoute,value):null;
- if(route){
-  answerLocked=true;const source=copy.querySelector(`[data-value="${value}"] .choice-art`);if(transfer)transferMaterial(source);formation.keepRoute(value);
-  copy.querySelectorAll('.choice').forEach(b=>b.disabled=true);
-  advanceTimer=setTimeout(()=>{materialRoute=route;try{sessionStorage.setItem('graphic-monster:material-route',JSON.stringify(route));}catch{}answerLocked=false;render({focus:true});announce('Choose the next material.');},reduced.matches?0:650);return;
- }
  answerLocked=true;
  if(transfer)transferMaterial(copy.querySelector(`[data-value="${value}"] .choice-art`));
- clearTimeout(advanceTimer);state=reducer(state,{type:'SELECT',value});const q=QUESTIONS[state.step];render({selection:true});announce(`${labelFor(q,value)} selected. ${feedback[state.step]}`);
+ clearTimeout(advanceTimer);const q=currentQuestion();state=reducer(state,{type:'SELECT',value});render({selection:true});announce(`${labelFor(q,value)} selected.`);
  copy.querySelectorAll('.choice').forEach(b=>b.disabled=true);
  advanceTimer=setTimeout(()=>{answerLocked=false;dispatch({type:'ADVANCE'});},reduced.matches?0:950);
 }

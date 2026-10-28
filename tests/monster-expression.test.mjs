@@ -1,9 +1,16 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {generateMonster} from '../src/dna.js';import {ANATOMIES} from '../src/paper-dna.js';
+import {generateMonster,combinations} from '../src/dna.js';import {ANATOMIES} from '../src/paper-dna.js';
 import {mouthFor,mouthParts,mouthPointFits,withMonsterMouth,MOUTH_LIBRARY} from '../src/monster-mouths.js';
 import {expressionPerformance,MOUTH_ACTIONS,MONSTER_ACTIONS} from '../src/monster-expression.js';
 import {familyPose,familyProfile,gaitTargets} from '../src/family-motion.js';import {buildFamilyRig} from '../src/family-rig.js';
 const scenes=ANATOMIES.map((anatomy,i)=>generateMonster({anatomy,principle:['shape','color','grid','color','typography','shape','texture','texture'][i],organization:'experiment',gaze:'clarity',density:'rich',attitude:'precise',seed:407+i},6));
+
+test('all answer combinations keep the mouth beside the gaze instead of on the lower torso',()=>{
+ for(const answers of combinations())for(const seed of [17,411,902]){
+  const scene=generateMonster({...answers,seed},7),spec=mouthFor(scene),eyeY=scene.eyes.reduce((sum,e)=>sum+(e.y+e.ry)/scene.eyes.length,0);
+  assert.ok(spec,scene.anatomy+' has a facial mouth');assert.ok(spec.y>=eyeY-24&&spec.y<=eyeY+64,scene.anatomy+' mouth stays in the face');
+ }
+});
 test('mouths fit real paper on eight families without covering eyes or body cutouts',()=>{
  const kinds=new Set();
  for(const scene of scenes){const before=JSON.stringify(scene),spec=mouthFor(scene);assert.ok(spec,scene.anatomy);assert.equal(mouthFor(scene),spec);kinds.add(spec.kind);const parent=scene.shapes.find(p=>p.id===spec.parentId);

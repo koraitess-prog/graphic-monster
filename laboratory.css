@@ -179,8 +179,8 @@ body .screen-question:not(.reveal-air) .choices.two .choice-art{max-width:290px}
 /* The creature owns the frame; the essential actions stay reachable. */
 body .screen-reveal .observation-identity{z-index:12}
 .specimen-actions{display:flex;flex-direction:column;align-items:flex-start;gap:14px;margin-top:26px}
-.specimen-new{font:inherit;font-size:12px;padding:13px 19px;min-height:46px;background:#e8ddba;color:#202426;border:1px solid #e8ddba;cursor:pointer}
-.specimen-new:hover,.specimen-new:focus-visible{background:#d6a333;border-color:#d6a333}
+.specimen-new{font:inherit;font-size:12px;padding:13px 19px;min-height:46px;background:transparent;color:#e8ddba;border:1px solid #e8ddba;cursor:pointer}
+.specimen-new:hover,.specimen-new:focus-visible{background:transparent;color:#d6a333;border-color:#d6a333}.specimen-new:focus-visible{outline:2px solid #e8ddba;outline-offset:4px}
 body .specimen-play-toggle{font-size:10px;color:#b9c4b2;min-height:36px;padding:4px 0;background:none;border:0}
 body .screen-reveal .specimen-actions[hidden]{display:none}
 body .site-header{position:relative;z-index:18}
@@ -208,3 +208,22 @@ body .specimen-play-toggle{font-size:12px;min-height:44px}
 /* A fixed viewport camera bridges assembly and flight without a layout jump. */
 body .screen-reveal.arrival-stage.viewport-flight .studio{will-change:auto;transform:none!important}
 body.arrival-in-progress #monster{z-index:9}
+
+@media(max-width:680px){
+ body .screen-reveal .observation-identity{text-align:center}
+ body .screen-reveal .reveal-name{margin-inline:auto}
+ body .screen-reveal .reveal-name canvas{margin-inline:auto}
+ body .screen-reveal .specimen-description{margin-inline:auto;text-align:center}
+ body .screen-reveal .specimen-actions{justify-content:center}
+}
+
+/* Independent form choice: three equally weighted objects, no scrolling. */
+body .screen-question:not(.reveal-air) .choices.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:160px;gap:28px;width:100%;max-width:780px;margin-inline:auto}
+body .screen-question:not(.reveal-air) .three .choice{height:160px;grid-column:auto;min-width:0}
+@media(max-width:680px){body .screen-question:not(.reveal-air) .choices.three{grid-template-rows:130px;gap:8px}body .screen-question:not(.reveal-air) .three .choice{height:130px;min-height:110px;padding-inline:0}}
+
+/* Desktop identity shares the description's left edge; phone stays centered. */
+@media(min-width:681px){
+ body .screen-reveal .reveal-name{margin-left:0;margin-right:0;text-align:left}
+ body .screen-reveal .reveal-name canvas{margin-left:0;margin-right:0;object-position:left center}
+}

@@ -29,11 +29,13 @@ export function mouthFor(scene){
  const plates=scene.shapes.filter(s=>s.id==='body'||/^eye-head-\d+$/.test(s.id)),eyes=scene.eyes;
  const eyeX=eyes.reduce((n,e)=>n+e.x/eyes.length,0),eyeY=eyes.reduce((n,e)=>n+(e.y+e.ry)/eyes.length,0),angle=scene.anatomy==='knot'?Math.PI/2:scene.answers.organization==='experiment'?-.055:0;
  let best;
- for(const scale of [1,.78,.59,.43,.30]){
+ for(const scale of [1,.78,.59,.43,.30,.22]){
   const h=profile.h*scale,w=(kind==='orbital'?Math.min(profile.w,profile.h*1.2):kind==='cavity'?Math.min(profile.w,profile.h*1.8):profile.w)*scale;
   for(const parent of plates){const xs=parent.points.map(p=>p[0]),ys=parent.points.map(p=>p[1]);
    for(let y=Math.min(...ys)+6;y<Math.max(...ys)-5;y+=7)for(let x=Math.min(...xs)+6;x<Math.max(...xs)-5;x+=7){
-    if(!mouthPointFits(scene,[x,y],parent))continue;
+    // A large jaw must never win a roomy spot on the pelvis. Reduce the jaw
+    // until it fits the face instead of searching farther down the body.
+    if(y<eyeY-24||y>eyeY+64||Math.abs(x-eyeX)>105||!mouthPointFits(scene,[x,y],parent))continue;
     let fit=true;for(const u of [-1,-.5,0,.5,1])for(const v of [-1,0,1])if(!mouthPointFits(scene,local(u*(w/2+4),v*(h/2+4),x,y,angle),parent)){fit=false;break;}
     if(!fit)continue;
     // Prefer below the gaze and near an existing paper join, rather than the
