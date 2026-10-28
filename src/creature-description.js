@@ -1,10 +1,11 @@
-// Design interpretation for display; archived scenes and stored stories stay intact.
+// A design personality, derived from answers. Saved artwork and original stories stay intact.
 export function describeCreature(scene){
- const a=scene.answers??{};
- const language={'form-type':'Letterforms','form-grid':'Modular structure','form-shape':'Free contours'}[a.construction]??{typography:'Typography',grid:'Modular repetition',color:'Contrasting color fields',shape:'Angular forms and open counters',texture:'Repeated surface marks'}[a.principle]??'Cut-paper forms';
- const composition=a.organization==='experiment'?'An asymmetric composition':'An ordered composition';
- const focus=a.gaze==='clarity'?'A clear focal point':'Multiple focal points';
- const surface=a.surface?`${a.density==='rich'?'layered':'sparse'} ${a.surface==='grain'?'printed textures':'color fields'}`:a.density==='rich'?'layered textures':'generous negative space';
- const gesture=a.attitude==='playful'?'Loose, irregular gestures create a playful rhythm.':'Controlled gestures keep the rhythm precise.';
- return `${composition} emphasizes ${language.toLowerCase()}. ${focus} and ${surface} shape the visual hierarchy. ${gesture}`;
+ const a=scene.answers??{},playful=a.attitude==='playful',rich=a.density==='rich';
+ const kind={'form-type':'typographic','form-grid':'modular','form-shape':'angular'}[a.construction]??{typography:'typographic',grid:'modular',color:'chromatic',shape:'angular',texture:'ink-stained'}[a.principle]??'paper';
+ const printed=a.surface==='grain'||(!a.surface&&a.principle!=='color');
+ const skin=printed?(rich?'wearing layers of printed scratches':'wearing a few stubborn ink marks'):(rich?'stitched from overlapping color patches':'cut from bold, quiet color planes');
+ const gaze=a.gaze==='clarity'?'a fixed stare':'wandering eyes';
+ const habit=a.organization==='experiment'?'keeps rearranging its lopsided silhouette':'guards every alignment';
+ const personality=playful?(rich?'It hoards details and never stays inside the margins.':'It saves its empty space for sudden mischief.'):(rich?'Every scratch belongs to an obsessive little system.':'It leaves nothing extra, including a spare gesture.');
+ return `A ${playful?'restless':'watchful'} ${kind} creature ${skin}. With ${gaze}, it ${habit}. ${personality}`;
 }
